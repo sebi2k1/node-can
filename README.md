@@ -1,7 +1,9 @@
 node-can
 ========
 
-NodeJS SocketCAN extension
+This is a NodeJS SocketCAN extension. SocketCAN is a socket-based implementation of the CANbus protocol for Linux system.
+
+This extensions makes it possible to send and receive CAN messages (extended, remote transission) using simple Javascript functions.
 
 Example
 ========
