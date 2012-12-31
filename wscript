@@ -10,4 +10,8 @@ def configure(conf):
 def build(bld):
   can = bld.new_task_gen('cxx', 'shlib', 'node_addon')
   can.target = 'can'
-  can.source = 'raw.cc'
+  can.source = 'src/raw.cc'
+
+  sig = bld.new_task_gen('cxx', 'shlib', 'node_addon')
+  sig.target = 'can_signals'
+  sig.source = 'src/signals.cc'
