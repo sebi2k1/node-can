@@ -2,7 +2,7 @@
   "author": "Sebastian Haas <sebastian@sebastianhaas.info>",
   "name": "can",
   "description": "A SocketCAN abstraction layer for NodeJS.",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "repository": {
     "type": "git",
     "url": "git://github.com/sebi2k1/node-can.git"
