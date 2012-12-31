@@ -1,6 +1,4 @@
-srcdir = '.'
 blddir = 'build'
-VERSION = '1.0.4'
 
 def set_options(opt):
   opt.tool_options('compiler_cxx')
@@ -12,4 +10,4 @@ def configure(conf):
 def build(bld):
   can = bld.new_task_gen('cxx', 'shlib', 'node_addon')
   can.target = 'can'
-  can.source = [ 'src/raw.cc' ]
+  can.source = 'raw.cc'

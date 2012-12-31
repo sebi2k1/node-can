@@ -1,16 +1,18 @@
 {
-  "author": "Sebastian Haas <sebastian@sebastianhaas.info>",
   "name": "can",
+  "author": {
+    "name": "Sebastian Haas",
+    "email": "sebastian@sebastianhaas.info"
+  },
   "description": "A SocketCAN abstraction layer for NodeJS.",
-  "version": "1.0.4",
+  "version": "1.0.6",
   "repository": {
     "type": "git",
     "url": "git://github.com/sebi2k1/node-can.git"
   },
-  "main": "can.js",
-  "engines": {
-    "node": "~0.6.6"
+  "scripts" : {
+    "preinstall" : "node-waf configure && node-waf build",
+    "preuninstall" : "rm -rf build/*"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "main": "can.js"
 }
