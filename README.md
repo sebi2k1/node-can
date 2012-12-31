@@ -22,12 +22,12 @@ channel.addListener("onMessage", channel.send, channel);
 channel.start();
 ```
 
-Installation
-------------
+Install
+-------
 
 There are two options for installing node-can:
 
-1. Clone / download node-can from [github](https://github.com/sebi2k1/node-can),
+1. Clone / download node-can from [GitHub](https://github.com/sebi2k1/node-can),
    then:
 
     node-waf clean && node-waf configure build
