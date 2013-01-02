@@ -170,7 +170,7 @@ DatabaseService.prototype.send = function (msg_name) {
 		if (typeof(val) == 'double')
 			val = parseInt(Math.round(val));
 		
-		_signals.encode_signal(canmsg.data, s.bitOffset, s.bitLength, s.endianess == 'little', val);
+		_signals.encode_signal(canmsg.data, s.bitOffset, s.bitLength, s.endianess == 'little', s.type == 'signed', val);
 	}
 	
 	this.channel.send(canmsg);

@@ -45,3 +45,36 @@ exports['receive_signals'] = function(test) {
 		}
 	});
 }
+
+exports['transmit_receive_signals'] = function(test) {
+	// Parse database
+	var network = can.parseNetworkDescription("./tests/samples.kcd");
+
+	var channel = can.createRawChannel("vcan0");
+	var gen_channel = can.createRawChannel("vcan0");
+
+	var rx_db = new can.DatabaseService(channel, network.buses["Motor"].messages);
+	var tx_db = new can.DatabaseService(gen_channel, network.buses["Motor"].messages);
+
+	channel.start();
+	gen_channel.start();
+
+	var next_speed = -128;
+
+	tx_db.messages["CruiseControlStatus"].signals["SpeedKm"].update(next_speed);
+	tx_db.send("CruiseControlStatus");
+
+	rx_db.messages["CruiseControlStatus"].signals["SpeedKm"].onChange(function(s) {
+		test.equal(s.value, next_speed++);
+
+		if (next_speed > 127) {
+			channel.stop();
+			gen_channel.stop();
+			test.done();
+		} else {
+			tx_db.messages["CruiseControlStatus"].signals["SpeedKm"].update(next_speed);
+			tx_db.send("CruiseControlStatus");
+		}
+	});
+}
+

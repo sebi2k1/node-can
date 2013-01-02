@@ -89,20 +89,19 @@ Handle<Value> DecodeSignal(const Arguments& args)
     bool isSigned = false;
     u_int8_t data[8];
 
-    CHECK_CONDITION(args.Length() >= 4, "Too few arguments");
+    CHECK_CONDITION(args.Length() == 5, "Too few arguments");
     CHECK_CONDITION(args[0]->IsArray(), "Invalid argument");
     CHECK_CONDITION(args[1]->IsUint32(), "Invalid offset");
     CHECK_CONDITION(args[2]->IsUint32(), "Invalid bit length");
     CHECK_CONDITION(args[3]->IsBoolean(), "Invalid endianess");
+    CHECK_CONDITION(args[4]->IsBoolean(), "Invalid signed flag");
 
     Local<Array> jsData = Local<Array>::Cast(args[0]);
 
-    offset = args[1]->ToUint32()->Uint32Value();
+    offset    = args[1]->ToUint32()->Uint32Value();
     bitLength = args[2]->ToUint32()->Uint32Value();
     endianess = args[3]->IsTrue() ? ENDIANESS_INTEL : ENDIANESS_MOTOROLA;
-
-    if (args[4]->IsBoolean())
-        isSigned = args[4]->IsTrue() ? true : false;
+    isSigned  = args[4]->IsTrue() ? true : false;
 
     int i;
     size_t maxBytes = std::min<u_int32_t>(jsData->Length(), sizeof(data));
@@ -169,30 +168,45 @@ void _setvalue(u_int32_t offset, u_int32_t bitLength, ENDIANESS endianess, u_int
 // arg[2] - startBit zero indexed, Right(0)->Left(7)
 // arg[3] - bitLength one indexed
 // arg[4] - endianess
-// arg[5] - value to encode
+// arg[5] - sign flag
+// arg[6] - value to encode
 Handle<Value> EncodeSignal(const Arguments& args)
 {
     HandleScope scope;
 
     u_int32_t offset, bitLength;
     ENDIANESS endianess;
+    bool sign = false;
     u_int8_t data[8];
     u_int64_t raw_value;
 
-    CHECK_CONDITION(args.Length() >= 5, "Too few arguments");
+    CHECK_CONDITION(args.Length() == 6, "Too few arguments");
     CHECK_CONDITION(args[0]->IsArray(), "Invalid argument");
     CHECK_CONDITION(args[1]->IsUint32(), "Invalid offset");
     CHECK_CONDITION(args[2]->IsUint32(), "Invalid bit length");
     CHECK_CONDITION(args[3]->IsBoolean(), "Invalid endianess");
-    CHECK_CONDITION(args[4]->IsNumber() || args[5]->IsBoolean(), "Invalid value");
+    CHECK_CONDITION(args[4]->IsBoolean(), "Invalid sign flag");
+    CHECK_CONDITION(args[5]->IsNumber() || args[5]->IsBoolean(), "Invalid value");
 
     Local<Array> jsData = Local<Array>::Cast(args[0]);
 
     offset = args[1]->ToUint32()->Uint32Value();
     bitLength = args[2]->ToUint32()->Uint32Value();
     endianess = args[3]->IsTrue() ? ENDIANESS_INTEL : ENDIANESS_MOTOROLA;
+    sign = args[4]->IsTrue() ? true : false;
 
-    raw_value = args[4]->ToNumber()->Uint32Value();
+    if (sign) {
+        int32_t in_val = args[5]->ToNumber()->Int32Value();
+
+        if (in_val < 0) {
+            in_val *= -1; // Make it a positive number
+
+            raw_value = (~in_val) + 1;
+            raw_value &= ~(UINT64_MAX << bitLength); // mask valid bits
+        }
+    }
+
+    raw_value = args[5]->ToNumber()->Uint32Value();
 
     int i;
     size_t maxBytes = std::min<u_int32_t>(jsData->Length(), sizeof(data));
