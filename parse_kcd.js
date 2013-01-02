@@ -119,6 +119,7 @@ exports.parseKcdFile = function(file) {
 						_s.unit = value[0]['$'].unit ? value[0]['$'].unit : "";
 						_s.minValue = value[0]['$'].min ? value[0]['$'].min : undefined;
 						_s.maxValue = value[0]['$'].max ? value[0]['$'].max : undefined;
+						_s.type = value[0]['$'].type ? value[0]['$'].type : "unsigned";
 					}
 					
 					var offset_num = parseInt(signal.offset) + _s.bitLength;

@@ -1,0 +1,11 @@
+<NetworkDefinition>
+	<Bus name="Motor">
+		<Message id="0x37F" name="CruiseControlStatus">
+			<Signal name="SpeedKm" offset="0" length="8" endianess="little">
+				<Value type="signed"/>
+			</Signal>
+		</Message>		
+	</Bus>
+</NetworkDefinition>
+
+

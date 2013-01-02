@@ -40,6 +40,15 @@ exports['little_endian_decode'] = function(test) {
 	test.done();
 }
 
+exports['little_endian_signed_decode'] = function(test) {
+	data = [0xFE, 0xFF, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE];
+	
+	test.equals(signals.decode_signal(data, 8, 8, true, true), -1);
+	test.equals(signals.decode_signal(data, 0, 16, true, true), -2);
+	
+	test.done();
+}
+
 exports['big_endian_encode'] = function(test) {
 	data = [0, 0, 0, 0, 0, 0, 0, 0];
 	

@@ -122,14 +122,12 @@ DatabaseService.prototype.onMessage = function (msg) {
 	var m = this.messages[id];
 	
 	if (!m)
-	{
 		console.log(this.messages[id].name + " not found");
-	}
 	
 	// Let the C-Portition extract and convert the signal
 	for (i in m.signals) {
 		var s = m.signals[i];
-		var val = _signals.decode_signal(msg.data, s.bitOffset, s.bitLength, s.endianess == 'little');
+		var val = _signals.decode_signal(msg.data, s.bitOffset, s.bitLength, s.endianess == 'little', s.type == 'signed');
 		
 		if (s.factor)
 			val *= s.factor;
@@ -178,7 +176,7 @@ DatabaseService.prototype.send = function (msg_name) {
 	this.channel.send(canmsg);
 }
 
-
 // Exports
 exports.parseNetworkDescription = kcd.parseKcdFile;
 exports.DatabaseService = DatabaseService;
+

@@ -86,6 +86,7 @@ Handle<Value> DecodeSignal(const Arguments& args)
 
     u_int32_t offset, bitLength;
     ENDIANESS endianess;
+    bool isSigned = false;
     u_int8_t data[8];
 
     CHECK_CONDITION(args.Length() >= 4, "Too few arguments");
@@ -100,19 +101,26 @@ Handle<Value> DecodeSignal(const Arguments& args)
     bitLength = args[2]->ToUint32()->Uint32Value();
     endianess = args[3]->IsTrue() ? ENDIANESS_INTEL : ENDIANESS_MOTOROLA;
 
+    if (args[4]->IsBoolean())
+        isSigned = args[4]->IsTrue() ? true : false;
+
     int i;
     size_t maxBytes = std::min<u_int32_t>(jsData->Length(), sizeof(data));
-
-    // TODO: This is a quite horrific way of writing signal values to the provided
-    // javascript array. But the algorithm works on u8 data and Array does not support
-    // such kind of low level access. Other option would be to use a node::Buffer and
-    // to work directly on the buffer.
 
     // Remember bytes in given message data array
     for (i = 0; i < maxBytes; i++)
         data[i] = (u_int8_t)jsData->Get(i)->Int32Value();
 
-    Local<Integer> retval = Integer::NewFromUnsigned((u_int32_t)_getvalue(data, offset, bitLength, endianess));
+    Local<Integer> retval;
+    uint64_t val = _getvalue(data, offset, bitLength, endianess);
+
+    // Value shall be interpreted as signed (2's complement)
+    if (isSigned && val & (1 << (bitLength - 1))) {
+        int32_t tmp = -1 * (~((UINT64_MAX << bitLength) | val) + 1);
+	retval = Integer::New(tmp);
+    } else {
+	retval = Integer::NewFromUnsigned((u_int32_t)val);
+    }
 
     return scope.Close(retval);
 }
@@ -188,11 +196,6 @@ Handle<Value> EncodeSignal(const Arguments& args)
 
     int i;
     size_t maxBytes = std::min<u_int32_t>(jsData->Length(), sizeof(data));
-
-    // TODO: This is a quite horrific way of writing signal values to the provided
-    // javascript array. But the algorithm works on u8 data and Array does not support
-    // such kind of low level access. Other option would be to use a node::Buffer and
-    // to work directly on the buffer.
 
     // Remember bytes in given message data array
     for (i = 0; i < maxBytes; i++)
