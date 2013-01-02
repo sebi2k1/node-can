@@ -40,23 +40,12 @@ exports['little_endian_decode'] = function(test) {
 	test.done();
 }
 
-exports['little_endian_encode'] = function(test) {
-	data = [0, 0, 0, 0, 0, 0, 0, 0];
+exports['little_endian_signed_decode'] = function(test) {
+	data = [0xFE, 0xFF, 0x80];
 	
-	signals.encode_signal(data, 0, 1, true, false, 1);
-	signals.encode_signal(data, 1, 1, true, false, 1);
-	signals.encode_signal(data, 2, 1, true, false, 0);
-	signals.encode_signal(data, 3, 1, true, false, 1);
-	test.deepEqual(data, [0xD0, 0x00, 0x00, 0, 0, 0, 0, 0]);
-	
-	signals.encode_signal(data, 4, 8, true, false, 0xEA);
-	test.deepEqual(data, [0xDE, 0xA0, 0x00, 0, 0, 0, 0, 0]);
-	
-	signals.encode_signal(data, 12, 12, true, false, 0xEDB);
-	test.deepEqual(data, [0xDE, 0xAD, 0xBE, 0, 0, 0, 0, 0]);
-
-	signals.encode_signal(data, 12, 12, true, false, 0);
-	test.deepEqual(data, [0xDE, 0xA0, 0x00, 0, 0, 0, 0, 0], "Overwriting signal value failed");
+	test.equals(signals.decode_signal(data, 8, 8, true, true), -1);
+	test.equals(signals.decode_signal(data, 0, 16, true, true), -2);
+	test.equals(signals.decode_signal(data, 16, 8, true, true), -128);
 	
 	test.done();
 }
