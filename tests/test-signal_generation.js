@@ -36,6 +36,8 @@ exports['receive_signals'] = function(test) {
 		}
 
 		if (expected == 0) {
+			channel.stop();
+			gen_channel.stop();
 			test.done();
 		} else {
 			cm.data[0] = next_speed;

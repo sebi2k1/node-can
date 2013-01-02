@@ -41,10 +41,11 @@ exports['little_endian_decode'] = function(test) {
 }
 
 exports['little_endian_signed_decode'] = function(test) {
-	data = [0xFE, 0xFF, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE];
+	data = [0xFE, 0xFF, 0x80 ];
 	
 	test.equals(signals.decode_signal(data, 8, 8, true, true), -1);
 	test.equals(signals.decode_signal(data, 0, 16, true, true), -2);
+	test.equals(signals.decode_signal(data, 16, 8, true, true), -128);
 	
 	test.done();
 }
@@ -83,3 +84,14 @@ exports['big_endian_decode'] = function(test) {
 	
 	test.done();
 }
+
+exports['big_endian_signed_decode'] = function(test) {
+	data = [0xFF, 0xFE, 0x80 ];
+	
+	test.equals(signals.decode_signal(data, 7, 8, false, true), -1);
+	test.equals(signals.decode_signal(data, 15, 16, false, true), -2);
+	test.equals(signals.decode_signal(data, 23, 8, false, true), -128);
+	
+	test.done();
+}
+
