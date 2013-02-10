@@ -1,5 +1,6 @@
 var can = require('can');
 var fs = require('fs');
+var buffer = require('buffer');
 
 exports['receive_signals'] = function(test) {
 	// Parse database
@@ -11,7 +12,7 @@ exports['receive_signals'] = function(test) {
 	channel.start();
 	gen_channel.start();
 
-	var cm = { data: [ 0 ]};
+	var cm = { data: new Buffer([ 0 ]) };
 	cm.id = db.messages["CruiseControlStatus"].id;
 
 	var next_speed = 255;

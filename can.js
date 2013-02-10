@@ -23,6 +23,7 @@
 // CAN-Object
 
 var can = require('./build/Release/can');
+var buffer = require('buffer');
 
 // Exports
 exports.createRawChannel = function(channel, timestamps) { return new can.RawChannel(channel, timestamps); }
@@ -149,11 +150,11 @@ DatabaseService.prototype.send = function (msg_name) {
 		id: m.id,
 		ext: m.ext,
 		rtr: false,
-		data: []
+		data: new Buffer(m.length)
 	}
 	
 	for (var i = 0; i < m.length; i++)
-		canmsg.data.push(0);
+		canmsg.data[i] = 0;
 	
 	for (i in m.signals) {
 		var s = m.signals[i];

@@ -17,6 +17,7 @@
 
 #include <v8.h>
 #include <node.h>
+#include <node_buffer.h>
 
 #include <algorithm>
 
@@ -90,13 +91,15 @@ Handle<Value> DecodeSignal(const Arguments& args)
     u_int8_t data[8];
 
     CHECK_CONDITION(args.Length() == 5, "Too few arguments");
-    CHECK_CONDITION(args[0]->IsArray(), "Invalid argument");
+    CHECK_CONDITION(args[0]->IsObject(), "Invalid argument");
+
+    Local<Object> jsData = args[0]->ToObject();
+ 
+    CHECK_CONDITION(Buffer::HasInstance(jsData), "Invalid argument");
     CHECK_CONDITION(args[1]->IsUint32(), "Invalid offset");
     CHECK_CONDITION(args[2]->IsUint32(), "Invalid bit length");
     CHECK_CONDITION(args[3]->IsBoolean(), "Invalid endianess");
     CHECK_CONDITION(args[4]->IsBoolean(), "Invalid signed flag");
-
-    Local<Array> jsData = Local<Array>::Cast(args[0]);
 
     offset    = args[1]->ToUint32()->Uint32Value();
     bitLength = args[2]->ToUint32()->Uint32Value();
@@ -104,11 +107,10 @@ Handle<Value> DecodeSignal(const Arguments& args)
     isSigned  = args[4]->IsTrue() ? true : false;
 
     int i;
-    size_t maxBytes = std::min<u_int32_t>(jsData->Length(), sizeof(data));
+    size_t maxBytes = std::min<u_int32_t>(Buffer::Length(jsData), sizeof(data));
 
-    // Remember bytes in given message data array
-    for (i = 0; i < maxBytes; i++)
-        data[i] = (u_int8_t)jsData->Get(i)->Int32Value();
+    memset(data, 0, sizeof(data));
+    memcpy(data, Buffer::Data(jsData), maxBytes);
 
     Local<Integer> retval;
     uint64_t val = _getvalue(data, offset, bitLength, endianess);
@@ -181,14 +183,16 @@ Handle<Value> EncodeSignal(const Arguments& args)
     u_int64_t raw_value;
 
     CHECK_CONDITION(args.Length() == 6, "Too few arguments");
-    CHECK_CONDITION(args[0]->IsArray(), "Invalid argument");
+    CHECK_CONDITION(args[0]->IsObject(), "Invalid argument");
+
+    Local<Object> jsData = args[0]->ToObject();
+ 
+    CHECK_CONDITION(Buffer::HasInstance(jsData), "Invalid argument");
     CHECK_CONDITION(args[1]->IsUint32(), "Invalid offset");
     CHECK_CONDITION(args[2]->IsUint32(), "Invalid bit length");
     CHECK_CONDITION(args[3]->IsBoolean(), "Invalid endianess");
     CHECK_CONDITION(args[4]->IsBoolean(), "Invalid sign flag");
     CHECK_CONDITION(args[5]->IsNumber() || args[5]->IsBoolean(), "Invalid value");
-
-    Local<Array> jsData = Local<Array>::Cast(args[0]);
 
     offset = args[1]->ToUint32()->Uint32Value();
     bitLength = args[2]->ToUint32()->Uint32Value();
@@ -208,18 +212,14 @@ Handle<Value> EncodeSignal(const Arguments& args)
 
     raw_value = args[5]->ToNumber()->Uint32Value();
 
-    int i;
-    size_t maxBytes = std::min<u_int32_t>(jsData->Length(), sizeof(data));
+    size_t maxBytes = std::min<u_int32_t>(Buffer::Length(jsData), sizeof(data));
 
-    // Remember bytes in given message data array
-    for (i = 0; i < maxBytes; i++)
-        data[i] = (u_int8_t)jsData->Get(i)->Int32Value();
+    // Since call may not have supplied enough bytes we have to make a temp copy
+    memcpy(data, Buffer::Data(jsData), maxBytes);
 
     _setvalue(offset, bitLength, endianess, data, raw_value);
 
-    // Restore new bytes
-    for (i = 0; i < maxBytes; i++)
-        jsData->Set(i, Integer::NewFromUnsigned((u_int32_t)data[i]));
+    memcpy(Buffer::Data(jsData), data, maxBytes);
 
     return scope.Close(Undefined());
 }

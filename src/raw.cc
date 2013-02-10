@@ -34,6 +34,8 @@
 
 #include "raw.h"
 
+#include <node_buffer.h>
+
 using namespace node;
 using namespace v8;
 using namespace std;
@@ -310,18 +312,18 @@ Handle<Value> RawChannel::Send(const Arguments& args)
     if (obj->Get(rtr_symbol)->IsTrue())
         frame.can_id |= CAN_RTR_FLAG;
 
-    Local<Array> data = Local<Array>::Cast(obj->Get(data_symbol));
+    Local<Value> dataArg = obj->Get(data_symbol);
 
-    frame.can_dlc = data->Length();
+    if (!Buffer::HasInstance(dataArg))
+        return ThrowException(Exception::Error(String::New("Data field must be a Buffer")));
 
-    int i;
+    // Get frame data
+    frame.can_dlc = Buffer::Length(dataArg->ToObject());
+    memcpy(frame.data, Buffer::Data(dataArg->ToObject()), frame.can_dlc);
 
-    for (i = 0; i < frame.can_dlc; i++)
-        frame.data[i] = data->Get(i)->Int32Value();
+    int i = send(hw->m_SocketFd, &frame, sizeof(struct can_frame), 0);
 
-    send(hw->m_SocketFd, &frame, sizeof(struct can_frame), 0);
-
-    return args.This();
+    return Int32::New(i);
 }
 
 void RawChannel::async_receiver_ready(int status)
@@ -331,7 +333,7 @@ void RawChannel::async_receiver_ready(int status)
     struct can_frame frame;
     int i;
 
-    if (recv(m_SocketFd, &frame, sizeof(struct can_frame), MSG_DONTWAIT) > 0)
+    while (recv(m_SocketFd, &frame, sizeof(struct can_frame), MSG_DONTWAIT) > 0)
     {
         TryCatch try_catch;
 
@@ -361,12 +363,9 @@ void RawChannel::async_receiver_ready(int status)
         obj->Set(ext_symbol, Boolean::New(isEff), PropertyAttribute(ReadOnly|DontDelete));
         obj->Set(rtr_symbol, Boolean::New(isRtr), PropertyAttribute(ReadOnly|DontDelete));
 
-        Local<Array> data = Array::New(frame.can_dlc & 0xf);
+	Local<Buffer> buffer = Buffer::New((char *)frame.data, frame.can_dlc & 0xf);
 
-        for (i = 0; i < data->Length(); i++)
-            data->Set(i, Int32::New(frame.data[i]));
-
-        obj->Set(data_symbol, data, PropertyAttribute(ReadOnly|DontDelete));
+	obj->Set(data_symbol, buffer->handle_, PropertyAttribute(ReadOnly|DontDelete));
 
         for (i = 0; i < m_Listeners.size(); i++)
         {

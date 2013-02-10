@@ -1,4 +1,5 @@
 var can = require('can');
+var buffer = require('buffer');
 
 exports['channel_creation'] = function(test) {
 	// Throw exception if channel doesn't exist
@@ -19,11 +20,12 @@ exports['rxtx_test'] = function(test) {
 	c1.start();
 	c2.start();
 	
-	var canmsg = { id: 10, data: [ 0 ] };
+	var canmsg = { id: 10, data: new Buffer([ 0, 0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA, 0xF7 ]) };
 
 	var rx_count = 0;
 	
 	c1.addListener("onMessage", function(msg) {
+console.log(msg);
 		test.equal(msg.data[0], rx_count);
 		rx_count++;
 	});
