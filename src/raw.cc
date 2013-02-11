@@ -25,6 +25,7 @@
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include <sys/poll.h>
 #include <net/if.h>
 
 #include <linux/can.h>
@@ -39,6 +40,11 @@
 using namespace node;
 using namespace v8;
 using namespace std;
+
+#define MAX_FRAMES_PER_ASYNC_EVENT 100
+
+#define likely(x)   __builtin_expect( x , 1)
+#define unlikely(x) __builtin_expect( x , 0)
 
 //-----------------------------------------------------------------------------------------
 Persistent<FunctionTemplate> RawChannel::s_ct;
@@ -294,10 +300,10 @@ Handle<Value> RawChannel::Send(const Arguments& args)
 
     RawChannel* hw = ObjectWrap::Unwrap<RawChannel>(args.This());
 
-    if (args.Length() < 1)
+    if (unlikely(args.Length() < 1))
         return ThrowException(Exception::Error(String::New("Invalid arguments")));
 
-    if (!args[0]->IsObject())
+    if (unlikely(!args[0]->IsObject()))
         return ThrowException(Exception::Error(String::New("First argument must be an Object")));
 
     struct can_frame frame;
@@ -335,6 +341,8 @@ void RawChannel::async_receiver_ready(int status)
     struct can_frame frame;
     int i;
 
+    unsigned int framesProcessed = 0;
+
     while (recv(m_SocketFd, &frame, sizeof(struct can_frame), MSG_DONTWAIT) > 0)
     {
         TryCatch try_catch;
@@ -354,7 +362,7 @@ void RawChannel::async_receiver_ready(int status)
         {
             struct timeval tv;
 
-            if (ioctl(m_SocketFd, SIOCGSTAMP, &tv) >= 0)
+            if (likely(ioctl(m_SocketFd, SIOCGSTAMP, &tv) >= 0))
             {
                 obj->Set(tssec_symbol, Uint32::New(tv.tv_sec), PropertyAttribute(ReadOnly|DontDelete));
                 obj->Set(tsusec_symbol, Uint32::New(tv.tv_usec), PropertyAttribute(ReadOnly|DontDelete));
@@ -383,38 +391,32 @@ void RawChannel::async_receiver_ready(int status)
                 listener->callback->Call(listener->handle, 1, &argv[0]);
         }
 
-        if (try_catch.HasCaught())
+        if (unlikely(try_catch.HasCaught()))
             FatalException(try_catch);
+
+        if (++framesProcessed > MAX_FRAMES_PER_ASYNC_EVENT)
+            break;
     }
 }
 
 void RawChannel::ThreadEntry()
 {
+    struct pollfd pfd;
+
+    pfd.fd = m_SocketFd;
+    pfd.events = POLLIN;
+
     while (!m_ThreadStopRequested)
     {
-        fd_set rdfs;
-        int ret;
-        struct timeval tv;
-        FD_ZERO(&rdfs);
+        pfd.revents = 0;
 
-        FD_SET(m_SocketFd, &rdfs);
-
-        tv.tv_sec = 0;
-        tv.tv_usec = 10 * 1000;
-
-        ret = select(m_SocketFd + 1, &rdfs, NULL, NULL, &tv);
-
-        if (ret >= 0)
+        if (likely(poll(&pfd, 1, 100) >= 0))
         {
-            if (FD_ISSET(m_SocketFd, &rdfs))
-            {
-                // Notify main loop about available messages
+            if (likely(pfd.revents & POLLIN))
                 uv_async_send(&m_AsyncReceiverReady);
-            }
         }
         else
         {
-            perror("ERROR\n");
             break;
         }
     }

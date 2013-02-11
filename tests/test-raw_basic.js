@@ -25,7 +25,6 @@ exports['rxtx_test'] = function(test) {
 	var rx_count = 0;
 	
 	c1.addListener("onMessage", function(msg) {
-console.log(msg);
 		test.equal(msg.data[0], rx_count);
 		rx_count++;
 	});
