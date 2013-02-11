@@ -77,7 +77,8 @@ private:
         Persistent<Object> handle;
         Persistent<Function> callback;
     };
-    vector<struct listener> m_Listeners;
+
+    vector<struct listener *> m_Listeners;
 
     pthread_t m_Thread;
     string m_Name;

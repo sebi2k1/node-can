@@ -76,7 +76,9 @@ RawChannel::RawChannel(const char *name, bool timestamps) : m_Thread(0), m_Name(
 
 RawChannel::~RawChannel()
 {
-    // TODO: Dispose listeners
+    for (int i = 0; i < m_Listeners.size(); i++)
+        delete m_Listeners.at(i);
+
     m_Listeners.clear();
 
     if (m_SocketFd)
@@ -160,9 +162,9 @@ Handle<Value> RawChannel::AddListener(const Arguments& args)
             object = Persistent<Object>::New(args[2]->ToObject());
     }
 
-    struct listener listener;
-    listener.handle = object;
-    listener.callback = func;
+    struct listener *listener = new struct listener;
+    listener->handle = object;
+    listener->callback = func;
 
     hw->m_Listeners.push_back(listener);
 
@@ -360,8 +362,12 @@ void RawChannel::async_receiver_ready(int status)
         }
 
         obj->Set(id_symbol, Uint32::New(id), PropertyAttribute(ReadOnly|DontDelete));
-        obj->Set(ext_symbol, Boolean::New(isEff), PropertyAttribute(ReadOnly|DontDelete));
-        obj->Set(rtr_symbol, Boolean::New(isRtr), PropertyAttribute(ReadOnly|DontDelete));
+
+        if (isEff)
+            obj->Set(ext_symbol, Boolean::New(isEff), PropertyAttribute(ReadOnly|DontDelete));
+
+        if (isRtr)
+            obj->Set(rtr_symbol, Boolean::New(isRtr), PropertyAttribute(ReadOnly|DontDelete));
 
 	Local<Buffer> buffer = Buffer::New((char *)frame.data, frame.can_dlc & 0xf);
 
@@ -369,12 +375,12 @@ void RawChannel::async_receiver_ready(int status)
 
         for (i = 0; i < m_Listeners.size(); i++)
         {
-            struct listener listener = m_Listeners.at(i);
+            struct listener *listener = m_Listeners.at(i);
 
-            if (listener.handle.IsEmpty())
-                listener.callback->Call(Context::GetCurrent()->Global(), 1, &argv[0]);
+            if (listener->handle.IsEmpty())
+                listener->callback->Call(Context::GetCurrent()->Global(), 1, &argv[0]);
             else
-                listener.callback->Call(listener.handle, 1, &argv[0]);
+                listener->callback->Call(listener->handle, 1, &argv[0]);
         }
 
         if (try_catch.HasCaught())
@@ -398,19 +404,18 @@ void RawChannel::ThreadEntry()
 
         ret = select(m_SocketFd + 1, &rdfs, NULL, NULL, &tv);
 
-        if (ret < 0)
+        if (ret >= 0)
+        {
+            if (FD_ISSET(m_SocketFd, &rdfs))
+            {
+                // Notify main loop about available messages
+                uv_async_send(&m_AsyncReceiverReady);
+            }
+        }
+        else
         {
             perror("ERROR\n");
             break;
-        }
-
-        if (ret == 0)
-            continue;
-
-        if (FD_ISSET(m_SocketFd, &rdfs))
-        {
-            // Notify main loop about available messages
-            uv_async_send(&m_AsyncReceiverReady);
         }
     }
 }
