@@ -123,7 +123,7 @@ DatabaseService.prototype.onMessage = function (msg) {
 	var m = this.messages[id];
 	
 	if (!m)
-		console.log(this.messages[id].name + " not found");
+		console.log("Message ID " + msg.id + " not found");
 	
 	// Let the C-Portition extract and convert the signal
 	for (i in m.signals) {
