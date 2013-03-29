@@ -64,30 +64,38 @@ RawChannel::RawChannel(const char *name, bool timestamps) : m_Thread(0), m_Name(
     m_ThreadStopRequested = false;
     m_TimestampsSupported = timestamps;
 
-    if (m_SocketFd > 0) {
+    if (m_SocketFd > 0)
+    {
         struct ifreq ifr;
 
-        strcpy(ifr.ifr_name, name);
-        ioctl(m_SocketFd, SIOCGIFINDEX, &ifr);
+        memset(&ifr, 0, sizeof(ifr));
+        strncpy(ifr.ifr_name, name, IFNAMSIZ - 1);
+        if (ioctl(m_SocketFd, SIOCGIFINDEX, &ifr) != 0)
+            goto on_error;
 
+        memset(&m_SocketAddr, 0, sizeof(m_SocketAddr));
         m_SocketAddr.can_family = PF_CAN;
         m_SocketAddr.can_ifindex = ifr.ifr_ifindex;
 
-        if (bind(m_SocketFd, (struct sockaddr *)&m_SocketAddr, sizeof(m_SocketAddr)) < 0) {
-            close(m_SocketFd);
-            m_SocketFd = -1;
-        }
+        if (bind(m_SocketFd, (struct sockaddr *)&m_SocketAddr, sizeof(m_SocketAddr)) < 0)
+            goto on_error;
+
+        return;
+
+on_error:
+        close(m_SocketFd);
+        m_SocketFd = -1;
     }
 }
 
 RawChannel::~RawChannel()
 {
-    for (int i = 0; i < m_Listeners.size(); i++)
+    for (size_t i = 0; i < m_Listeners.size(); i++)
         delete m_Listeners.at(i);
 
     m_Listeners.clear();
 
-    if (m_SocketFd)
+    if (m_SocketFd >= 0)
         close(m_SocketFd);
 
     if (m_Thread)
@@ -215,7 +223,7 @@ Handle<Value> RawChannel::SetRxFilters(const Arguments& args)
     if (args[0]->IsArray())
     {
         Local<Array> list = Local<Array>::Cast(args[0]);
-        int idx;
+        size_t idx;
 
         rfilter = (struct can_filter *)malloc(sizeof(struct can_filter) * list->Length());
 
@@ -305,6 +313,9 @@ Handle<Value> RawChannel::Send(const Arguments& args)
 
     if (unlikely(!args[0]->IsObject()))
         return ThrowException(Exception::Error(String::New("First argument must be an Object")));
+    
+    if (unlikely(hw->m_SocketFd < 0))
+        return ThrowException(Exception::Error(String::New("Invalid channel")));
 
     struct can_frame frame;
 
@@ -339,7 +350,6 @@ void RawChannel::async_receiver_ready(int status)
     HandleScope scope;
 
     struct can_frame frame;
-    int i;
 
     unsigned int framesProcessed = 0;
 
@@ -381,7 +391,7 @@ void RawChannel::async_receiver_ready(int status)
 
 	obj->Set(data_symbol, buffer->handle_, PropertyAttribute(ReadOnly|DontDelete));
 
-        for (i = 0; i < m_Listeners.size(); i++)
+        for (size_t i = 0; i < m_Listeners.size(); i++)
         {
             struct listener *listener = m_Listeners.at(i);
 

@@ -106,7 +106,6 @@ Handle<Value> DecodeSignal(const Arguments& args)
     endianess = args[3]->IsTrue() ? ENDIANESS_INTEL : ENDIANESS_MOTOROLA;
     isSigned  = args[4]->IsTrue() ? true : false;
 
-    int i;
     size_t maxBytes = std::min<u_int32_t>(Buffer::Length(jsData), sizeof(data));
 
     memset(data, 0, sizeof(data));

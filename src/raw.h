@@ -65,10 +65,10 @@ public:
     // UV async callbacks
     DEFINE_ASYNC_CB(RawChannel, async_receiver_ready);
 
-    static void * c_thread_entry(void *_this) { assert(_this); reinterpret_cast<RawChannel *>(_this)->ThreadEntry(); }
+    static void * c_thread_entry(void *_this) { assert(_this); reinterpret_cast<RawChannel *>(_this)->ThreadEntry(); return NULL; }
     void ThreadEntry();
 
-    bool IsValid() { return m_SocketFd > 0; }
+    bool IsValid() { return m_SocketFd >= 0; }
 
 private:
     uv_async_t m_AsyncReceiverReady;
