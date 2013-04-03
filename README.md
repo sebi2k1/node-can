@@ -55,7 +55,7 @@ There are two options for installing node-can:
 1. Clone / download node-can from [GitHub](https://github.com/sebi2k1/node-can),
    then:
 
-    node-waf clean && node-waf configure build
+    node-gyp configure && node-gyp build
 
 2. Install via npm:
 
