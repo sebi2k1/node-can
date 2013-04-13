@@ -63,7 +63,7 @@
             "namespaces": {},
             "tag": "module",
             "file": "can.js",
-            "line": 167,
+            "line": 163,
             "description": "The Signals modules provides an interface to access the values/signals\nencoded in CAN messages."
         }
     },
@@ -104,7 +104,7 @@
             "module": "Signals",
             "namespace": "",
             "file": "can.js",
-            "line": 51,
+            "line": 47,
             "description": "The actual signal."
         },
         "Message": {
@@ -118,7 +118,7 @@
             "module": "Signals",
             "namespace": "",
             "file": "can.js",
-            "line": 119,
+            "line": 115,
             "description": "Just a container to keep the Signals."
         },
         "DatabaseService": {
@@ -132,7 +132,7 @@
             "module": "Signals",
             "namespace": "",
             "file": "can.js",
-            "line": 167,
+            "line": 163,
             "description": "A DatabaseService is usually generated once per bus to collect signals\ncoded in the CAN messages according a DB description.",
             "is_constructor": 1,
             "params": [
@@ -266,15 +266,7 @@
         },
         {
             "file": "can.js",
-            "line": 43,
-            "itemtype": "method",
-            "name": "hans",
-            "class": "exports",
-            "module": "Signals"
-        },
-        {
-            "file": "can.js",
-            "line": 57,
+            "line": 53,
             "description": "Symbolic name",
             "itemtype": "attribute",
             "name": "name",
@@ -284,7 +276,7 @@
         },
         {
             "file": "can.js",
-            "line": 75,
+            "line": 71,
             "description": "Current value",
             "itemtype": "attribute",
             "name": "value",
@@ -294,7 +286,7 @@
         },
         {
             "file": "can.js",
-            "line": 87,
+            "line": 83,
             "description": "Keep track of listeners who want to be notified if this signal changes",
             "itemtype": "method",
             "name": "onChange",
@@ -309,7 +301,7 @@
         },
         {
             "file": "can.js",
-            "line": 97,
+            "line": 93,
             "description": "Set new value of this signal. Any local registered clients will\nreceive a notification. Please note, no CAN message is actually\nsend to the bus (@see DatabaseServer::send)",
             "itemtype": "method",
             "name": "update",
@@ -325,7 +317,7 @@
         },
         {
             "file": "can.js",
-            "line": 125,
+            "line": 121,
             "description": "CAN identifier",
             "itemtype": "attribute",
             "name": "id",
@@ -335,7 +327,7 @@
         },
         {
             "file": "can.js",
-            "line": 132,
+            "line": 128,
             "description": "Extended Frame Format used",
             "itemtype": "attribute",
             "name": "ext",
@@ -345,7 +337,7 @@
         },
         {
             "file": "can.js",
-            "line": 139,
+            "line": 135,
             "description": "Symbolic name",
             "itemtype": "attribute",
             "name": "name",
@@ -355,7 +347,7 @@
         },
         {
             "file": "can.js",
-            "line": 146,
+            "line": 142,
             "description": "Length in bytes of resulting CAN message",
             "itemtype": "attribute",
             "name": "length",
@@ -365,7 +357,7 @@
         },
         {
             "file": "can.js",
-            "line": 153,
+            "line": 149,
             "description": "Named array of signals within this message. Accessible via index and name.",
             "itemtype": "attribute",
             "name": "signals",
@@ -376,7 +368,7 @@
         },
         {
             "file": "can.js",
-            "line": 180,
+            "line": 176,
             "description": "Named array of known messages. Accessible via index and name.",
             "itemtype": "attribute",
             "name": "messages",
@@ -386,7 +378,7 @@
         },
         {
             "file": "can.js",
-            "line": 229,
+            "line": 225,
             "description": "Construct a CAN message and encode all related signals according\nthe rules. Finally send the message to the bus.",
             "itemtype": "method",
             "name": "send",
@@ -401,7 +393,7 @@
         },
         {
             "file": "can.js",
-            "line": 273,
+            "line": 269,
             "itemtype": "method",
             "name": "parseNetworkDescription",
             "params": [
