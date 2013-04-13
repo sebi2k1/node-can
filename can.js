@@ -40,10 +40,6 @@ exports.createRawChannel = function(channel, timestamps) { return new can.RawCha
  * @module Signals
  */
 
-/**
- * @method hans
- */
-
 var _signals = require('./build/Release/can_signals');
 
 var kcd = require('./parse_kcd');
