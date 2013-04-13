@@ -42,9 +42,15 @@ using namespace std;
 
 #define CHECK_CONDITION(expr, str) if(! (expr) ) return ThrowException(Exception::Error(String::New(str)));
 
+/**
+ * Basic CAN access
+ * @module CAN
+ */
+
 //-----------------------------------------------------------------------------------------
 /**
- * Channel object
+ * A Raw channel to access a certain CAN channel (e.g. vcan0) via CAN messages.
+ * @class RawChannel
  */
 class RawChannel : ObjectWrap
 {
@@ -55,11 +61,47 @@ public:
     RawChannel(const char *name, bool timestamps = false);
     ~RawChannel();
 
+    /**
+     * Create a new CAN channel object
+     * @constructor RawChannel
+     * @param interface {string} interface name to create channel on (e.g. can0)
+     * @return new RawChannel object
+     */
     static Handle<Value> New(const Arguments& args);
+    
+    /**
+     * Add listener to receive certain notifications
+     * @method addListener
+     * @param event {string} onMessage to register for incoming messages
+     * @param callback {any} JS callback object
+     * @param instance {any} Optional instance pointer to call callback
+     */
     static Handle<Value> AddListener(const Arguments& args);
+    
+    /**
+     * Start operation on this CAN channel
+     * @method start
+     */
     static Handle<Value> Start(const Arguments& args);
+    
+    /**
+     * Stop any operations on this CAN channel
+     * @method stop
+     */
     static Handle<Value> Stop(const Arguments& args);
+    
+    /**
+     * Send a CAN message immediately
+     * @method send
+     * @param message {Object} JSON object describing the CAN message, keys are id, length, data {Buffer}, ext or rtr
+     */
     static Handle<Value> Send(const Arguments& args);
+    
+    /**
+     * Set a list of active filters to be applied for incoming messages
+     * @method setRxFilters
+     * @param filters {Object} single filter or array of filter e.g. { id: 0x1ff, mask: 0x1ff, invert: false}, result of (id & mask)
+     */
     static Handle<Value> SetRxFilters(const Arguments& args);
 
     // UV async callbacks
