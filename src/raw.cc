@@ -56,6 +56,7 @@ static Persistent<String> mask_symbol;
 static Persistent<String> invert_symbol;
 static Persistent<String> ext_symbol;
 static Persistent<String> rtr_symbol;
+static Persistent<String> err_symbol;
 static Persistent<String> data_symbol;
 
 RawChannel::RawChannel(const char *name, bool timestamps) : m_Thread(0), m_Name(name), m_SocketFd(-1)
@@ -66,11 +67,16 @@ RawChannel::RawChannel(const char *name, bool timestamps) : m_Thread(0), m_Name(
 
     if (m_SocketFd > 0)
     {
+        can_err_mask_t err_mask;
         struct ifreq ifr;
 
         memset(&ifr, 0, sizeof(ifr));
         strncpy(ifr.ifr_name, name, IFNAMSIZ - 1);
         if (ioctl(m_SocketFd, SIOCGIFINDEX, &ifr) != 0)
+            goto on_error;
+
+        err_mask = CAN_ERR_MASK;
+        if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &err_mask, sizeof(err_mask)) != 0)
             goto on_error;
 
         memset(&m_SocketAddr, 0, sizeof(m_SocketAddr));
@@ -127,6 +133,7 @@ void RawChannel::Init(Handle<Object> target)
     invert_symbol = NODE_PSYMBOL("invert");
     ext_symbol    = NODE_PSYMBOL("ext");
     rtr_symbol    = NODE_PSYMBOL("rtr");
+    err_symbol    = NODE_PSYMBOL("err");
     data_symbol   = NODE_PSYMBOL("data");
 }
 
@@ -362,6 +369,7 @@ void RawChannel::async_receiver_ready(int status)
         canid_t id = frame.can_id;
         bool isEff = frame.can_id & CAN_EFF_FLAG;
         bool isRtr = frame.can_id & CAN_RTR_FLAG;
+        bool isErr = frame.can_id & CAN_ERR_FLAG;
 
         id = isEff ? frame.can_id & CAN_EFF_MASK : frame.can_id & CAN_SFF_MASK;
 
@@ -386,6 +394,9 @@ void RawChannel::async_receiver_ready(int status)
 
         if (isRtr)
             obj->Set(rtr_symbol, Boolean::New(isRtr), PropertyAttribute(ReadOnly|DontDelete));
+
+        if (isErr)
+            obj->Set(err_symbol, Boolean::New(isErr), PropertyAttribute(ReadOnly|DontDelete));
 
 	Local<Buffer> buffer = Buffer::New((char *)frame.data, frame.can_dlc & 0xf);
 
