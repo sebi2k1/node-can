@@ -48,20 +48,33 @@ static u_int64_t _getvalue(u_int8_t * data,
 
     if (byteOrder == ENDIANESS_INTEL)
     {
-        d <<= offset;
+        //d <<= offset;
 
-        size_t i, left = length;
+        size_t intraByteOffset = offset % 8;
+        size_t thisByte = offset / 8;
 
-        for (i = 0; i < length;)
+        size_t bitsLeft = length;
+        size_t outputShift = 0;
+
+        bool initial_pass = true;
+        for (; bitsLeft > 0 ;)
         {
-            size_t next_shift = left >= 8 ? 8 : left;
-            size_t shift = 64 - (i + next_shift);
-            size_t m = next_shift < 8 ? 0xFF >> next_shift : 0xFF;
+            size_t bitsCopied = bitsLeft >= 8 ? 8 : bitsLeft;
+            if ( initial_pass && bitsLeft != intraByteOffset )
+            	bitsCopied -= intraByteOffset;
 
-            o |= ((d >> shift) & m) << i;
+            size_t shift = 56 - (8 * thisByte);
+            if( initial_pass )
+            	shift += intraByteOffset;
 
-            left -= 8;
-            i += next_shift;
+            uint64_t byteMask = ((1 << bitsCopied) - 1); // 0x1111
+
+            o |= ((d >> shift) & byteMask) << outputShift ;
+
+            thisByte++;
+            initial_pass = false;
+            bitsLeft -= bitsCopied;
+            outputShift += bitsCopied;
         }
     }
     else
@@ -131,22 +144,45 @@ void _setvalue(u_int32_t offset, u_int32_t bitLength, ENDIANESS endianess, u_int
 
     if (endianess == ENDIANESS_INTEL)
     {
-        size_t left = bitLength;
+        size_t bitsLeft = bitLength;
+        size_t intraByteOffset = offset % 8;
+        size_t thisByte = offset / 8;  // 8 offset = 8/8 byte 1
+        // add the initial intrabyte Offset ... only matters the first time.
+        // if (12 o 8 l)
+        //             this byte
+        //           at iBO
+        //             3210 xxxx|xxxx 7654
+        //  |.... ....|.... ....|.... ....|
+        //
+        // if (8 o 19 l)
+        //             7654 3210 fedc ba98 xxxx x(+3
+        //  |.... ....|.... ....|.... ....|.... ....|
+        //
 
-        size_t source = 0;
-
-        for (source = 0; source < bitLength; )
+        bool initial_pass = true;
+        // while there are bits to process
+        for ( ; bitsLeft > 0; )
         {
-            size_t next_shift = left < 8 ? left : 8;
-            size_t shift = (64 - offset - next_shift) - source;
-            uint64_t m = ((1 << next_shift) - 1);
+      	   // process 8 at a time
+      	   //    what about starting at offset and moving 8 bits
+      	  //      ? it would be 4 and 4
+      	   //  bitsMoved =
+            size_t bitsMoved = bitsLeft < 8 ? bitsLeft : 8;
+            if ( initial_pass && bitsLeft != intraByteOffset)
+            	bitsMoved -= intraByteOffset;
+            size_t shift = 56 - ( 8 * thisByte );
+            if( initial_pass )
+            	shift += intraByteOffset ;
 
-            o &= ~(m << shift);
-            o |= (raw_value & m) << shift;
+            uint64_t byteMask = ((1 << bitsMoved) - 1);
 
-            raw_value >>= 8;
-            source += next_shift;
-            left -= next_shift;
+            o &= ~(byteMask << shift );
+            o |= (raw_value & byteMask) << shift;
+
+            raw_value >>= bitsMoved;
+            initial_pass = false;
+            thisByte++; // move to next Byte
+            bitsLeft -= bitsMoved; // decrement the bits processed
         }
     }
     else
