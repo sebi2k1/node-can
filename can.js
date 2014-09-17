@@ -56,23 +56,37 @@ function Signal(desc)
          * @final
          */
 	this.name = desc['name'];
-	
+	this.spn = desc['spn'];
+
 	this.bitOffset = desc['bitOffset'];
 	this.bitLength = desc['bitLength'];
 	this.endianess = desc['endianess'];
 	this.type = desc['type'];
 	
 	this.offset = desc['offset'];
-	this.factor = desc['factor'];
+	this.scale = desc['scale'];
 	
 	this.minValue = desc['minValue'];
 	this.maxValue = desc['maxValue'];
 
-        /**
-         * Current value
-         * @attribute value
-         * @final
-         */
+	this.units = desc['units'];
+
+	/**
+	 * Label set for defined states of the signal.
+	 */
+	this.labels = desc['labels'];
+
+	/**
+	 * this will allow triggering on mux'ed message ids.
+	 */
+	this.muxGroup = [ desc['mux'] ];
+
+	/**
+	 * Current value
+	 * 
+	 * @attribute value
+	 * @final
+	 */
 	this.value = desc['defaultValue'];
 	if (!this.value)
 		this.value = 0;
@@ -100,9 +114,16 @@ Signal.prototype.onChange = function(listener) {
  */
 Signal.prototype.update = function(newValue) {
 	// Nothing changed
-	if (this.value == newValue)
+	if (this.value == newValue) {
 		return;
-	
+	} else if (newValue > this.maxValue) {
+		console.error("ERROR : " + this.name + " value= " + newValue
+				+ " is outof bounds  > " + this.maxValue);
+	} else if (newValue < this.minValue) {
+		console.error("ERROR : " + this.name + " value= " + newValue
+				+ " is outof bounds  < " + this.minValue);
+	}
+
 	this.value = newValue;
 
 	// Update all listeners, that the signal changed
@@ -141,12 +162,29 @@ function Message(desc)
 	
         /**
          * Length in bytes of resulting CAN message
-         * @attribute length
-         * @final
-         */
-	this.length = desc.length;
-	
-        /**
+	 * 
+	 * @attribute len
+	 * @final
+	 */
+	this.len = desc.len;
+
+	/**
+	 * This is the time frame that the message gets generated
+	 * 
+	 * @attribute interval
+	 * @final
+	 */
+	this.interval = desc.interval;
+
+	/**
+	 * This is tells us the message is mutliplexed.
+	 * 
+	 * @attribute muxed
+	 * @final
+	 */
+	this.muxed = desc.muxed;
+
+	/**
          * Named array of signals within this message. Accessible via index and name.
          * @attribute {Signal} signals
          * @final
@@ -155,7 +193,11 @@ function Message(desc)
 	
 	for (i in desc['signals']) {
 		var s = desc['signals'][i];
-		this.signals[s.name] = new Signal(s);
+		if (this.signals[s.name] && this.signals[s.name].muxGroup) {
+			this.signals[s.name].muxGroup.push(s.mux);
+		} else {
+			this.signals[s.name] = new Signal(s);
+		}
 	}
 }
 
@@ -194,6 +236,8 @@ function DatabaseService(channel, db_desc) {
 
 // Callback for incoming messages
 DatabaseService.prototype.onMessage = function (msg) {
+	if (msg == undefined)
+		return;
 	if (msg.rtr)
 		return;
 	
@@ -206,15 +250,32 @@ DatabaseService.prototype.onMessage = function (msg) {
 		console.log("Message ID " + msg.id + " not found");
 		return;
 	}
-	
+	// this is the possible multiplexor for the signals coming in.
+	var b1mux = _signals.decode_signal(msg.data, 0, 8, true, false);
+
 	// Let the C-Portition extract and convert the signal
 	for (i in m.signals) {
 		var s = m.signals[i];
-		var val = _signals.decode_signal(msg.data, s.bitOffset, s.bitLength, s.endianess == 'little', s.type == 'signed');
-		
-		if (s.factor)
-			val *= s.factor;
-		
+		if (s.value === undefined)
+			continue;
+		// if this is a mux signal and the muxor isnt in my list...
+		if (m.muxed && s.muxGroup && s.muxGroup.indexOf(b1mux) == -1) {
+			continue;
+		}
+
+		var mask = 0;
+		for (var j = 0; j < s.bitLength; j++) {
+			mask |= (1 << j);
+		}
+
+		var val = _signals.decode_signal(msg.data, s.bitOffset, s.bitLength,
+				s.endianess == 'little', s.type == 'signed');
+
+		val &= mask;
+
+		if (s.scale)
+			val *= s.scale;
+
 		if (s.offset)
 			val += s.offset;
 
@@ -230,8 +291,11 @@ DatabaseService.prototype.onMessage = function (msg) {
  * @for DatabaseService
  */
 DatabaseService.prototype.send = function (msg_name) {
-	var m = this.messages[msg_name]
-	
+	var args = msg_name.split("."); // allow for mux'ed messages sent.
+
+	var m = this.messages[args[0]];
+	var mux = (args.length > 1) ? args[1] : undefined;
+
 	if (!m)
 		throw msg_name + " not defined";
 	
@@ -239,14 +303,28 @@ DatabaseService.prototype.send = function (msg_name) {
 		id: m.id,
 		ext: m.ext,
 		rtr: false,
-		data: new Buffer(m.length)
+		data : (m.len > 0 && m.len < 8) ? new Buffer(m.len) : new Buffer(8)
+	};
+
+	canmsg.data.fill(0); // should be 0xFF for j1939 message def. 
+
+
+	if (mux) {
+		_signals.encode_signal(canmsg.data, 0, 8, true, false,
+				parseInt(mux, 16));
 	}
-	
-	for (var i = 0; i < m.length; i++)
-		canmsg.data[i] = 0;
-	
 	for (i in m.signals) {
 		var s = m.signals[i];
+		if (s.value == undefined)
+			continue;
+
+		if (mux) {
+			// console.log("SEND muxed - " + mux + " is it in this list " +
+			// s.muxGroup + " = " + s.muxGroup.indexOf(parseInt(mux,16)) )
+			if (s.muxGroup.indexOf(parseInt(mux, 16)) === -1) {
+				continue;
+			}
+		}
 
 		var val = s.value;
 
@@ -254,13 +332,18 @@ DatabaseService.prototype.send = function (msg_name) {
 		if (s.offset)
 			val -= s.offset;
 		
-		if (s.factor)
-			val /= s.factor;
+		if (s.scale)
+			val /= s.scale;
 		
 		if (typeof(val) == 'double')
 			val = parseInt(Math.round(val));
 		
-		_signals.encode_signal(canmsg.data, s.bitOffset, s.bitLength, s.endianess == 'little', s.type == 'signed', val);
+		if (m.len == 0) {
+			// console.log("0 length packet - " + m.id);
+			return;
+		}
+		_signals.encode_signal(canmsg.data, s.bitOffset, s.bitLength,
+				s.endianess == 'little', s.type == 'signed', val);
 	}
 	
 	this.channel.send(canmsg);
