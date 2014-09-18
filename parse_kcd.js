@@ -89,7 +89,7 @@ exports.parseKcdFile = function(file) {
 					id: parseInt(message.id, 16),
 					ext: message.format == 'extended',
 					triggered: message.triggered == 'true',
-					len: message.len ? parseInt(message.len) : 0,
+					length: message.length ? parseInt(message.length) : 0,
 					interval: message.interval ? parseInt(message.interval) : 0,
 					muxed : (multiplex != undefined ),
 				};
@@ -144,7 +144,7 @@ exports.parseKcdFile = function(file) {
 							var _s = {
 								name: signal.name,
 								mux : parseInt(muxmsg['id'],16),
-								bitLength: signal.len ? parseInt(signal.len) : 1,
+								bitLength: signal.length ? parseInt(signal.length) : 1,
 								endianess: signal.endianess ? signal.endianess : 'little',
 								spn : signal.spn,
 								labels : {},
@@ -158,12 +158,13 @@ exports.parseKcdFile = function(file) {
 								_s.maxValue = value[0]['$'].max ? value[0]['$'].max : undefined;
 								_s.type = value[0]['$'].type ? value[0]['$'].type : "unsigned";
 								_s.defaultValue = value[0]['$'].defaultValue ? parseFloat(value[0]['$'].defaultValue) : 0.0 ;
-							}
-							// add label sets from the database. 
-							if( Array.isArray( value[0].LabelSet )){
-								var labels = value[0].LabelSet[0]['Label'];
-								for ( var i =0 ; i <  labels.length; i++  ){
-									_s.labels[labels[i]['$'].value] = labels[i]['$'].name ;
+							
+								// add label sets from the database. 
+								if( Array.isArray( value[0].LabelSet )){
+									var labels = value[0].LabelSet[0]['Label'];
+									for ( var i =0 ; i <  labels.length; i++  ){
+										_s.labels[labels[i]['$'].value] = labels[i]['$'].name ;
+									}
 								}
 							}
 							
@@ -187,7 +188,7 @@ exports.parseKcdFile = function(file) {
 					
 					var _s = {
 						name: signal.name,
-						bitLength: signal.len ? parseInt(signal.len) : 1,
+						bitLength: signal.length ? parseInt(signal.length) : 1,
 						endianess: signal.endianess ? signal.endianess : 'little',
 						spn : signal.spn,
 						labels : {},
@@ -201,12 +202,13 @@ exports.parseKcdFile = function(file) {
 						_s.maxValue = value[0]['$'].max ? value[0]['$'].max : undefined;
 						_s.type = value[0]['$'].type ? value[0]['$'].type : "unsigned";
 						_s.defaultValue = value[0]['$'].defaultValue ? parseFloat(value[0]['$'].defaultValue) : 0.0 ;
-					}
-					// add label sets from the database. 
-					if( Array.isArray( value[0].LabelSet )){
-						var labels = value[0].LabelSet[0]['Label'];
-						for ( var i =0 ; i <  labels.length; i++  ){
-							_s.labels[labels[i]['$'].value] = labels[i]['$'].name ;
+					
+						// add label sets from the database. 
+						if( Array.isArray( value[0].LabelSet )){
+							var labels = value[0].LabelSet[0]['Label'];
+							for ( var i =0 ; i <  labels.length; i++  ){
+								_s.labels[labels[i]['$'].value] = labels[i]['$'].name ;
+							}
 						}
 					}
 					var offset_num = parseInt(signal.offset) + _s.bitLength;
@@ -219,10 +221,10 @@ exports.parseKcdFile = function(file) {
 					_m.signals.push(_s);
 				}
 							   				
-				if (!_m.len) {
-					_m.len = parseInt(maxOffset / 8);
+				if (!_m.length) {
+					_m.length = parseInt(maxOffset / 8);
 					if (maxOffset % 8 > 0)
-						_m.len++;
+						_m.length++;
 				}
 			}
 		}
