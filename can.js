@@ -221,8 +221,8 @@ function DatabaseService(channel, db_desc) {
          */
 	this.messages = [];
 
-	for (i in db_desc) {
-		var m = db_desc[i];
+	for (i in db_desc['messages']) {
+		var m = db_desc['messages'][i];
 		var id = m.id | (m.ext ? 1 : 0) << 31;
 
 		var nm = new Message(m);
