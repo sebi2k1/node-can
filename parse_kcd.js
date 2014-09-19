@@ -143,7 +143,7 @@ exports.parseKcdFile = function(file) {
 							
 							var _s = {
 								name: signal.name,
-								mux : parseInt(muxmsg['id'],16),
+								mux : parseInt(muxmsg['count'],16),
 								bitLength: signal.length ? parseInt(signal.length) : 1,
 								endianess: signal.endianess ? signal.endianess : 'little',
 								spn : signal.spn,
