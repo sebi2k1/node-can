@@ -166,7 +166,7 @@ function Message(desc)
 	 * @attribute len
 	 * @final
 	 */
-	this.len = desc.len;
+	this.len = desc.length;
 
 	/**
 	 * This is the time frame that the message gets generated
