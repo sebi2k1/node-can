@@ -152,7 +152,7 @@ exports.parseKcdFile = function(file) {
 							// add Values from the database 
 							if (Array.isArray(value)) {
 								_s.slope = value[0]['$'].slope ? parseFloat(value[0]['$'].slope) : 1.0;
-								_s.offset = value[0]['$'].offset ? parseFloat(value[0]['$'].offset) : 0.0;
+								_s.intercept = value[0]['$'].intercept ? parseFloat(value[0]['$'].intercept) : 0.0;
 								_s.units = value[0]['$'].units ? value[0]['$'].units : "";
 								_s.minValue = value[0]['$'].min ? value[0]['$'].min : undefined;
 								_s.maxValue = value[0]['$'].max ? value[0]['$'].max : undefined;

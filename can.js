@@ -63,7 +63,7 @@ function Signal(desc)
 	this.endianess = desc['endianess'];
 	this.type = desc['type'];
 	
-	this.offset = desc['offset'];
+	this.intercept = desc['intercept'];
 	this.slope = desc['slope'];
 	
 	this.minValue = desc['minValue'];
@@ -276,8 +276,8 @@ DatabaseService.prototype.onMessage = function (msg) {
 		if (s.slope)
 			val *= s.slope;
 
-		if (s.offset)
-			val += s.offset;
+		if (s.intercept)
+			val += s.intercept;
 
 		s.update(val);
 	}
@@ -328,9 +328,9 @@ DatabaseService.prototype.send = function (msg_name) {
 
 		var val = s.value;
 
-		// Apply factor/offset and convert to Integer
-		if (s.offset)
-			val -= s.offset;
+		// Apply factor/intercept and convert to Integer
+		if (s.intercept)
+			val -= s.intercept;
 		
 		if (s.slope)
 			val /= s.slope;
