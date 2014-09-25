@@ -64,7 +64,7 @@ function Signal(desc)
 	this.type = desc['type'];
 	
 	this.offset = desc['offset'];
-	this.scale = desc['scale'];
+	this.slope = desc['slope'];
 	
 	this.minValue = desc['minValue'];
 	this.maxValue = desc['maxValue'];
@@ -273,8 +273,8 @@ DatabaseService.prototype.onMessage = function (msg) {
 
 		val &= mask;
 
-		if (s.scale)
-			val *= s.scale;
+		if (s.slope)
+			val *= s.slope;
 
 		if (s.offset)
 			val += s.offset;
@@ -332,8 +332,8 @@ DatabaseService.prototype.send = function (msg_name) {
 		if (s.offset)
 			val -= s.offset;
 		
-		if (s.scale)
-			val /= s.scale;
+		if (s.slope)
+			val /= s.slope;
 		
 		if (typeof(val) == 'double')
 			val = parseInt(Math.round(val));
