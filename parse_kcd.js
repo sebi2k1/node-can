@@ -143,7 +143,7 @@ exports.parseKcdFile = function(file) {
 							
 							var _s = {
 								name: signal.name,
-								mux : parseInt(muxmsg['id'],16),
+								mux : parseInt(muxmsg['count'],16),
 								bitLength: signal.length ? parseInt(signal.length) : 1,
 								endianess: signal.endianess ? signal.endianess : 'little',
 								spn : signal.spn,
@@ -151,8 +151,8 @@ exports.parseKcdFile = function(file) {
 							};							
 							// add Values from the database 
 							if (Array.isArray(value)) {
-								_s.scale = value[0]['$'].scale ? parseFloat(value[0]['$'].scale) : 1.0;
-								_s.offset = value[0]['$'].offset ? parseFloat(value[0]['$'].offset) : 0.0;
+								_s.slope = value[0]['$'].slope ? parseFloat(value[0]['$'].slope) : 1.0;
+								_s.intercept = value[0]['$'].intercept ? parseFloat(value[0]['$'].intercept) : 0.0;
 								_s.units = value[0]['$'].units ? value[0]['$'].units : "";
 								_s.minValue = value[0]['$'].min ? value[0]['$'].min : undefined;
 								_s.maxValue = value[0]['$'].max ? value[0]['$'].max : undefined;
@@ -195,8 +195,8 @@ exports.parseKcdFile = function(file) {
 					};
 					// add Values from the database 
 					if (Array.isArray(value)) {
-						_s.scale = value[0]['$'].scale ? parseFloat(value[0]['$'].scale) : 1.0;
-						_s.offset = value[0]['$'].offset ? parseFloat(value[0]['$'].offset) : 0.0;
+						_s.slope = value[0]['$'].slope ? parseFloat(value[0]['$'].slope) : 1.0;
+						_s.intercept = value[0]['$'].intercept ? parseFloat(value[0]['$'].intercept) : 0.0;
 						_s.units = value[0]['$'].units ? value[0]['$'].units : "";
 						_s.minValue = value[0]['$'].min ? value[0]['$'].min : undefined;
 						_s.maxValue = value[0]['$'].max ? value[0]['$'].max : undefined;

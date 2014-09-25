@@ -63,8 +63,8 @@ function Signal(desc)
 	this.endianess = desc['endianess'];
 	this.type = desc['type'];
 	
-	this.offset = desc['offset'];
-	this.scale = desc['scale'];
+	this.intercept = desc['intercept'];
+	this.slope = desc['slope'];
 	
 	this.minValue = desc['minValue'];
 	this.maxValue = desc['maxValue'];
@@ -166,7 +166,7 @@ function Message(desc)
 	 * @attribute len
 	 * @final
 	 */
-	this.len = desc.len;
+	this.len = desc.length;
 
 	/**
 	 * This is the time frame that the message gets generated
@@ -221,8 +221,8 @@ function DatabaseService(channel, db_desc) {
          */
 	this.messages = [];
 
-	for (i in db_desc) {
-		var m = db_desc[i];
+	for (i in db_desc['messages']) {
+		var m = db_desc['messages'][i];
 		var id = m.id | (m.ext ? 1 : 0) << 31;
 
 		var nm = new Message(m);
@@ -273,11 +273,11 @@ DatabaseService.prototype.onMessage = function (msg) {
 
 		val &= mask;
 
-		if (s.scale)
-			val *= s.scale;
+		if (s.slope)
+			val *= s.slope;
 
-		if (s.offset)
-			val += s.offset;
+		if (s.intercept)
+			val += s.intercept;
 
 		s.update(val);
 	}
@@ -328,12 +328,12 @@ DatabaseService.prototype.send = function (msg_name) {
 
 		var val = s.value;
 
-		// Apply factor/offset and convert to Integer
-		if (s.offset)
-			val -= s.offset;
+		// Apply factor/intercept and convert to Integer
+		if (s.intercept)
+			val -= s.intercept;
 		
-		if (s.scale)
-			val /= s.scale;
+		if (s.slope)
+			val /= s.slope;
 		
 		if (typeof(val) == 'double')
 			val = parseInt(Math.round(val));
