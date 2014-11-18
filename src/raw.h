@@ -104,6 +104,13 @@ public:
      */
     static Handle<Value> SetRxFilters(const Arguments& args);
 
+
+    /**
+     * Disable loopback of channel. By default it is activated
+     * @method disableLoopback
+     */
+    static Handle<Value> DisableLoopback(const Arguments& args);
+
     // UV async callbacks
     DEFINE_ASYNC_CB(RawChannel, async_receiver_ready);
 
