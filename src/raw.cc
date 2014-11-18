@@ -359,6 +359,15 @@ Handle<Value> RawChannel::Send(const Arguments& args)
     // Get frame data
     frame.can_dlc = Buffer::Length(dataArg->ToObject());
     memcpy(frame.data, Buffer::Data(dataArg->ToObject()), frame.can_dlc);
+
+    { // set timestamp when sending data
+      struct timeval now;
+      if ( 0==gettimeofday(&now, 0)) {
+        obj->Set(tssec_symbol, Uint32::New(now.tv_sec), PropertyAttribute(None));
+        obj->Set(tsusec_symbol, Uint32::New(now.tv_usec), PropertyAttribute(None));      
+      }
+    }
+    
     int i = send(hw->m_SocketFd, &frame, sizeof(struct can_frame), 0);
 
     return Int32::New(i);
