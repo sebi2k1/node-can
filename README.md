@@ -59,4 +59,4 @@ There are two options for installing node-can:
 
 2. Install via npm:
 
-    npm install can
+    npm install socketcan
