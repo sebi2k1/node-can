@@ -123,6 +123,7 @@ void RawChannel::Init(Handle<Object> target)
     NODE_SET_PROTOTYPE_METHOD(s_ct, "stop",         Stop);
     NODE_SET_PROTOTYPE_METHOD(s_ct, "send",         Send);
     NODE_SET_PROTOTYPE_METHOD(s_ct, "setRxFilters", SetRxFilters);
+    NODE_SET_PROTOTYPE_METHOD(s_ct, "disableLoopback",  DisableLoopback);
 
     target->Set(String::NewSymbol("RawChannel"), s_ct->GetFunction());
 
@@ -211,6 +212,18 @@ static bool ObjectToFilter(Handle<Object> object, struct can_filter *rfilter)
     rfilter->can_mask &= ~CAN_ERR_FLAG;
 
     return true;
+}
+
+Handle<Value> RawChannel::DisableLoopback(const Arguments& args)
+{
+    HandleScope scope;
+
+    RawChannel* hw = ObjectWrap::Unwrap<RawChannel>(args.This());
+    CHECK_CONDITION(hw->IsValid(), "Channel not ready");
+
+    const int loopback = 0;
+    setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_LOOPBACK, &loopback, sizeof(loopback));
+    return args.This();
 }
 
 Handle<Value> RawChannel::SetRxFilters(const Arguments& args)
@@ -347,6 +360,14 @@ Handle<Value> RawChannel::Send(const Arguments& args)
     frame.can_dlc = Buffer::Length(dataArg->ToObject());
     memcpy(frame.data, Buffer::Data(dataArg->ToObject()), frame.can_dlc);
 
+    { // set timestamp when sending data
+      struct timeval now;
+      if ( 0==gettimeofday(&now, 0)) {
+        obj->Set(tssec_symbol, Uint32::New(now.tv_sec), PropertyAttribute(None));
+        obj->Set(tsusec_symbol, Uint32::New(now.tv_usec), PropertyAttribute(None));      
+      }
+    }
+    
     int i = send(hw->m_SocketFd, &frame, sizeof(struct can_frame), 0);
 
     return Int32::New(i);
