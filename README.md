@@ -10,7 +10,7 @@ Usage
 
 Basic CAN example:
 ```javascript
-var can = require('can');
+var can = require('socketcan');
 
 var channel = can.createRawChannel("vcan0", true);
 
@@ -25,7 +25,7 @@ channel.start();
 
 Working with message and signals:
 ```javascript
-var can = require('can');
+var can = require('socketcan');
 var fs = require('fs');
 
 // Parse database
