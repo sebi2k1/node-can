@@ -1,11 +1,11 @@
 {
-  "name": "can",
+  "name": "socketcan",
   "author": {
     "name": "Sebastian Haas",
     "email": "sebastian@sebastianhaas.info"
   },
   "description": "A SocketCAN abstraction layer for NodeJS.",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "repository": {
     "type": "git",
     "url": "git://github.com/sebi2k1/node-can.git"
@@ -15,5 +15,6 @@
     "preuninstall" : "rm -rf build/*"
   },
   "dependencies": { "xml2js": ">=0.2.0" },
-  "main": "can.js"
+  "main": "socketcan.js",
+  "os": [ "linux" ]
 }

@@ -1,4 +1,4 @@
-var can = require('can');
+var can = require('socketcan');
 var fs = require('fs');
 var buffer = require('buffer');
 

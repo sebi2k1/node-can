@@ -1,4 +1,4 @@
-var can = require('can');
+var can = require('socketcan');
 var buffer = require('buffer');
 
 exports['channel_creation'] = function(test) {
