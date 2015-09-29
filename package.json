@@ -10,11 +10,16 @@
     "type": "git",
     "url": "git://github.com/sebi2k1/node-can.git"
   },
-  "scripts" : {
-    "preinstall" : "node-gyp configure && node-gyp build",
-    "preuninstall" : "rm -rf build/*"
+  "scripts": {
+    "preinstall": "node-gyp configure && node-gyp build",
+    "preuninstall": "rm -rf build/*"
   },
-  "dependencies": { "xml2js": ">=0.2.0" },
+  "dependencies": {
+    "nan": "^2.0.9",
+    "xml2js": ">=0.2.0"
+  },
   "main": "socketcan.js",
-  "os": [ "linux" ]
+  "os": [
+    "linux"
+  ]
 }
