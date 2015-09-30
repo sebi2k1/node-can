@@ -43,7 +43,6 @@
 #include <string>
 
 using namespace std;
-using namespace v8;
 
 #define CHECK_CONDITION(expr, str) if(!(expr)) return Nan::ThrowError(str);
 
@@ -51,6 +50,18 @@ using namespace v8;
 
 #define likely(x)   __builtin_expect( x , 1)
 #define unlikely(x) __builtin_expect( x , 0)
+
+// symbols
+#define SYMBOL(aString) Nan::New((aString)).ToLocalChecked()
+#define tssec_symbol    SYMBOL("ts_sec")
+#define tsusec_symbol   SYMBOL("ts_usec")
+#define id_symbol       SYMBOL("id")
+#define mask_symbol     SYMBOL("mask")
+#define invert_symbol   SYMBOL("invert")
+#define ext_symbol      SYMBOL("ext")
+#define rtr_symbol      SYMBOL("rtr")
+#define err_symbol      SYMBOL("err")
+#define data_symbol     SYMBOL("data")
 
 /**
  * Basic CAN access
@@ -65,15 +76,6 @@ using namespace v8;
 class RawChannel : public Nan::ObjectWrap {
 private:
 	static Nan::Persistent<v8::Function> constructor;
-	static Nan::Persistent<v8::String> tssec_symbol;
-	static Nan::Persistent<v8::String> tsusec_symbol;
-	static Nan::Persistent<v8::String> id_symbol;
-	static Nan::Persistent<v8::String> mask_symbol;
-	static Nan::Persistent<v8::String> invert_symbol;
-	static Nan::Persistent<v8::String> ext_symbol;
-	static Nan::Persistent<v8::String> rtr_symbol;
-	static Nan::Persistent<v8::String> err_symbol;
-	static Nan::Persistent<v8::String> data_symbol;
 public:
 	static void Init(v8::Local<v8::Object> exports)  {
 		Nan::HandleScope scope;
@@ -90,17 +92,6 @@ public:
 		Nan::SetPrototypeMethod(tpl, "send",         	Send);
 		Nan::SetPrototypeMethod(tpl, "setRxFilters", 	SetRxFilters);
 		Nan::SetPrototypeMethod(tpl, "disableLoopback", DisableLoopback);
-
-		// symbols
-		tssec_symbol.Reset(Nan::New("ts_sec").ToLocalChecked());
-		tsusec_symbol.Reset(Nan::New("ts_usec").ToLocalChecked());
-		id_symbol.Reset(Nan::New("id").ToLocalChecked());
-		mask_symbol.Reset(Nan::New("mask").ToLocalChecked());
-		invert_symbol.Reset(Nan::New("invert").ToLocalChecked());
-		ext_symbol.Reset(Nan::New("ext").ToLocalChecked());
-		rtr_symbol.Reset(Nan::New("rtr").ToLocalChecked());
-		err_symbol.Reset(Nan::New("err").ToLocalChecked());
-		data_symbol.Reset(Nan::New("data").ToLocalChecked());
 		
 		// constructor
 		constructor.Reset(tpl->GetFunction());
@@ -200,11 +191,11 @@ private:
 
 		CHECK_CONDITION(info[0]->IsString(), "First argument must be a string");
 
-		Nan::Persistent<Function> func;
-		Nan::Persistent<Object> object;
+		Nan::Persistent<v8::Function> func;
+		Nan::Persistent<v8::Object> object;
 
 		if (info[1]->IsFunction())
-			func.Reset(info[1].As<Function>());
+			func.Reset(info[1].As<v8::Function>());
 
 		if (info.Length() >= 3)
 		{
@@ -275,7 +266,7 @@ private:
 		CHECK_CONDITION(info[0]->IsObject(), "First argument must be an Object");
 		CHECK_CONDITION(hw->IsValid(), "Invalid channel!");
 		struct can_frame frame;
-		v8::Local<Object> obj =  info[0]->ToObject();
+		v8::Local<v8::Object> obj =  info[0]->ToObject();
 
 		// TODO: Check for correct structure of message object
 		frame.can_id = obj->Get(id_symbol)->Uint32Value();
@@ -286,26 +277,25 @@ private:
 		if (obj->Get(rtr_symbol)->IsTrue())
 			frame.can_id |= CAN_RTR_FLAG;
 
-		Local<Value> dataArg = obj->Get(data_symbol);
+		v8::Local<v8::Value> dataArg = obj->Get(data_symbol);
 
-		if (!Buffer::HasInstance(dataArg))
-			return ThrowException(Exception::Error(String::New("Data field must be a Buffer")));
+		CHECK_CONDITION(node::Buffer::HasInstance(dataArg), "Data field must be a Buffer");
 
 		// Get frame data
-		frame.can_dlc = Buffer::Length(dataArg->ToObject());
-		memcpy(frame.data, Buffer::Data(dataArg->ToObject()), frame.can_dlc);
+		frame.can_dlc = node::Buffer::Length(dataArg->ToObject());
+		memcpy(frame.data, node::Buffer::Data(dataArg->ToObject()), frame.can_dlc);
 
 		{ // set time stamp when sending data
 		  struct timeval now;
 		  if ( 0==gettimeofday(&now, 0)) {
-			obj->Set(tssec_symbol, Uint32::New(now.tv_sec), PropertyAttribute(None));
-			obj->Set(tsusec_symbol, Uint32::New(now.tv_usec), PropertyAttribute(None));      
+			  Nan::Set(obj, tssec_symbol, Nan::New((int32_t)now.tv_sec));
+			  Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)now.tv_usec));      
 		  }
 		}
 		
 		int i = send(hw->m_SocketFd, &frame, sizeof(struct can_frame), 0);
 		
-		info.GetReturnValue().Set(Int32::New(i));
+		info.GetReturnValue().Set(i);
 	}
 	
     /**
@@ -326,7 +316,7 @@ private:
 
 		if (info[0]->IsArray())
 		{
-			Local<Array> list = Local<Array>::Cast(info[0]);
+			v8::Local<v8::Array> list = v8::Local<v8::Array>::Cast(info[0]);
 			size_t idx;
 
 			rfilter = (struct can_filter *)malloc(sizeof(struct can_filter) * list->Length());
@@ -376,8 +366,8 @@ private:
     uv_async_t m_AsyncReceiverReady;
 	
     struct listener {
-        Nan::Persistent<Object> handle;
-        Nan::Persistent<Function> callback;
+        Nan::Persistent<v8::Object> handle;
+        Nan::Persistent<v8::Function> callback;
     };
 
     vector<struct listener *> m_Listeners;
@@ -416,14 +406,14 @@ private:
 		}
 	}
 	
-    bool IsValid() { return m_SocketFd >= 0; }
+  bool IsValid() { return m_SocketFd >= 0; }
 
-	static bool ObjectToFilter(Handle<Object> object, struct can_filter *rfilter)
+	static bool ObjectToFilter(v8::Handle<v8::Object> object, struct can_filter *rfilter)
 	{
 		Nan::HandleScope scope;
 
-		Handle<Value> id = object->Get(id_symbol);
-		Handle<Value> mask = object->Get(mask_symbol);
+		v8::Handle<v8::Value> id = object->Get(id_symbol);
+		v8::Handle<v8::Value> mask = object->Get(mask_symbol);
 
 		if (!id->IsUint32() || !mask->IsUint32())
 			return false;
@@ -443,7 +433,7 @@ private:
 	{
 		assert(handle);
 		assert(handle->data);
-		reinterpret_cast<CLASS *>(handle->data)->func (status);
+		reinterpret_cast<RawChannel*>(handle->data)->async_receiver_ready(status);
 	}
 
 	void async_receiver_ready(int status)
@@ -456,9 +446,9 @@ private:
 
 		while (recv(m_SocketFd, &frame, sizeof(struct can_frame), MSG_DONTWAIT) > 0)
 		{
-			TryCatch try_catch;
+			v8::TryCatch try_catch;
 
-			Local<Object> obj = Object::New();
+			v8::Local<v8::Object> obj = v8::Object::New();
 
 			canid_t id = frame.can_id;
 			bool isEff = frame.can_id & CAN_EFF_FLAG;
@@ -467,7 +457,7 @@ private:
 
 			id = isEff ? frame.can_id & CAN_EFF_MASK : frame.can_id & CAN_SFF_MASK;
 
-			Local<Value> argv[1];
+			v8::Local<v8::Value> argv[1];
 			argv[0] = obj;
 
 			if (m_TimestampsSupported)
@@ -476,25 +466,25 @@ private:
 
 				if (likely(ioctl(m_SocketFd, SIOCGSTAMP, &tv) >= 0))
 				{
-					obj->Set(tssec_symbol, Uint32::New(tv.tv_sec), PropertyAttribute(ReadOnly|DontDelete));
-					obj->Set(tsusec_symbol, Uint32::New(tv.tv_usec), PropertyAttribute(ReadOnly|DontDelete));
+					obj->Set(tssec_symbol, v8::Uint32::NewFromUnsigned(tv.tv_sec), v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
+					obj->Set(tsusec_symbol, v8::Uint32::NewFromUnsigned(tv.tv_usec), v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
 				}
 			}
 
-			obj->Set(id_symbol, Uint32::New(id), PropertyAttribute(ReadOnly|DontDelete));
+			obj->Set(id_symbol, v8::Uint32::New(id), v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
 
 			if (isEff)
-				obj->Set(ext_symbol, Boolean::New(isEff), PropertyAttribute(ReadOnly|DontDelete));
+				obj->Set(ext_symbol, v8::Boolean::New(isEff), v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
 
 			if (isRtr)
-				obj->Set(rtr_symbol, Boolean::New(isRtr), PropertyAttribute(ReadOnly|DontDelete));
+				obj->Set(rtr_symbol, v8::Boolean::New(isRtr), v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
 
 			if (isErr)
-				obj->Set(err_symbol, Boolean::New(isErr), PropertyAttribute(ReadOnly|DontDelete));
+				obj->Set(err_symbol, v8::Boolean::New(isErr), v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
 
-		Local<Buffer> buffer = Buffer::New((char *)frame.data, frame.can_dlc & 0xf);
+		v8::Local<node::Buffer> buffer = node::Buffer::New((char *)frame.data, frame.can_dlc & 0xf);
 
-		obj->Set(data_symbol, buffer->handle_, PropertyAttribute(ReadOnly|DontDelete));
+		obj->Set(data_symbol, buffer->handle_, v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
 
 			for (size_t i = 0; i < m_Listeners.size(); i++)
 			{
@@ -517,15 +507,6 @@ private:
 };
 
 Nan::Persistent<v8::Function> RawChannel::constructor;
-Nan::Persistent<v8::String> RawChannel::tssec_symbol;
-Nan::Persistent<v8::String> RawChannel::tsusec_symbol;
-Nan::Persistent<v8::String> RawChannel::id_symbol;
-Nan::Persistent<v8::String> RawChannel::mask_symbol;
-Nan::Persistent<v8::String> RawChannel::invert_symbol;
-Nan::Persistent<v8::String> RawChannel::ext_symbol;
-Nan::Persistent<v8::String> RawChannel::rtr_symbol;
-Nan::Persistent<v8::String> RawChannel::err_symbol;
-Nan::Persistent<v8::String> RawChannel::data_symbol;
 
 void InitAll(v8::Local<v8::Object> exports) {
   RawChannel::Init(exports);
