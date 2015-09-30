@@ -40,9 +40,6 @@
 #include <linux/can/raw.h>
 
 #include <vector>
-#include <string>
-
-using namespace std;
 
 #define CHECK_CONDITION(expr, str) if(!(expr)) return Nan::ThrowError(str);
 
@@ -370,7 +367,7 @@ private:
         Nan::Persistent<v8::Function> callback;
     };
 
-    vector<struct listener *> m_Listeners;
+    std::vector<struct listener *> m_Listeners;
 
     pthread_t m_Thread;
     string m_Name;
