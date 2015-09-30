@@ -40,6 +40,7 @@
 #include <linux/can/raw.h>
 
 #include <vector>
+#include <string>
 
 #define CHECK_CONDITION(expr, str) if(!(expr)) return Nan::ThrowError(str);
 
@@ -202,11 +203,9 @@ private:
 
 		
 		struct listener *listener = new struct listener;
-		listener->handle = object;
-		listener->callback = func;
-
-		hw->m_Listeners.push_back(listener);
-		
+		listener->handle.Reset(object);
+		listener->callback.Reset(func);
+		hw->m_Listeners.push_back(listener);		
 		info.GetReturnValue().Set(info.This());
 	}
 	
@@ -370,7 +369,7 @@ private:
     std::vector<struct listener *> m_Listeners;
 
     pthread_t m_Thread;
-    string m_Name;
+    std::string m_Name;
 
     int m_SocketFd;
     struct sockaddr_can m_SocketAddr;
