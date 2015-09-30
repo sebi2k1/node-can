@@ -446,7 +446,7 @@ private:
 
 		while (recv(m_SocketFd, &frame, sizeof(struct can_frame), MSG_DONTWAIT) > 0)
 		{
-			v8::TryCatch try_catch;
+			Nan::TryCatch try_catch;
 
 			v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
@@ -457,16 +457,17 @@ private:
 
 			id = isEff ? frame.can_id & CAN_EFF_MASK : frame.can_id & CAN_SFF_MASK;
 
-			v8::Local<v8::Value> argv[1];
-			argv[0] = obj;
-
+			v8::Local<v8::Value> argv[] = {
+			  obj,
+			};
+			
 			if (m_TimestampsSupported)
 			{
 				struct timeval tv;
 
 				if (likely(ioctl(m_SocketFd, SIOCGSTAMP, &tv) >= 0))
 				{
-					Nan::Set(obj, tssec_symbol, Nan::New<v8::Int32>(tv.tv_sec)); //, v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
+					Nan::Set(obj, tssec_symbol, Nan::New((int32_t)tv.tv_sec)); //, v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
 					Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)tv.tv_usec)); //, v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
 				}
 			}
@@ -487,12 +488,12 @@ private:
 			for (size_t i = 0; i < m_Listeners.size(); i++)
 			{
 				struct listener *listener = m_Listeners.at(i);
-				Nan::Callback cb(listener->callback);
-        cb->Call(listener->handle.IsEmpty()?Context::GetCurrent()->Global():listener->handle, 1, &argv[0]);
+				Nan::Callback callback(Nan::New(listener->callback));
+        callback.Call(Nan::New(listener->handle), 1, argv);
 			}
 
 			if (unlikely(try_catch.HasCaught()))
-				FatalException(try_catch);
+				Nan::FatalException(try_catch);
 
 			if (++framesProcessed > MAX_FRAMES_PER_ASYNC_EVENT)
 				break;
