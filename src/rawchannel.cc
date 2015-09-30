@@ -189,22 +189,13 @@ private:
 
 		CHECK_CONDITION(info[0]->IsString(), "First argument must be a string");
 
-		Nan::Persistent<v8::Function> func;
-		Nan::Persistent<v8::Object> object;
-
+    struct listener *listener = new struct listener;
 		if (info[1]->IsFunction())
-			func.Reset(info[1].As<v8::Function>());
+			listener->callback.Reset(info[1].As<v8::Function>());
 
-		if (info.Length() >= 3)
-		{
-			if (info[2]->IsObject())
-				object.Reset(info[2]->ToObject());
-		}
-
+		if (info.Length() >= 3 && info[2]->IsObject())
+				listener->handle.Reset(info[2]->ToObject());
 		
-		struct listener *listener = new struct listener;
-		listener->handle.Reset(object);
-		listener->callback.Reset(func);
 		hw->m_Listeners.push_back(listener);		
 		info.GetReturnValue().Set(info.This());
 	}
@@ -485,7 +476,7 @@ private:
 			{
 				struct listener *listener = m_Listeners.at(i);
 				Nan::Callback callback(Nan::New(listener->callback));
-        callback.Call(Nan::New(listener->handle), 1, argv);
+        callback.Call(1, argv);
 			}
 
 			if (unlikely(try_catch.HasCaught()))
