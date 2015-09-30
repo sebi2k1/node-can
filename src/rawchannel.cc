@@ -45,7 +45,7 @@
 using namespace std;
 using namespace v8;
 
-#define CHECK_CONDITION(expr, str) if(! (expr) ) return ThrowException(Exception::Error(String::New(str)));
+#define CHECK_CONDITION(expr, str) if(!(expr)) return Nan::ThrowError(str);
 
 #define MAX_FRAMES_PER_ASYNC_EVENT 100
 
@@ -65,15 +65,15 @@ using namespace v8;
 class RawChannel : public Nan::ObjectWrap {
 private:
 	static Nan::Persistent<v8::Function> constructor;
-	static Nan::Persistent<String> tssec_symbol;
-	static Nan::Persistent<String> tsusec_symbol;
-	static Nan::Persistent<String> id_symbol;
-	static Nan::Persistent<String> mask_symbol;
-	static Nan::Persistent<String> invert_symbol;
-	static Nan::Persistent<String> ext_symbol;
-	static Nan::Persistent<String> rtr_symbol;
-	static Nan::Persistent<String> err_symbol;
-	static Nan::Persistent<String> data_symbol;
+	static Nan::Persistent<v8::String> tssec_symbol;
+	static Nan::Persistent<v8::String> tsusec_symbol;
+	static Nan::Persistent<v8::String> id_symbol;
+	static Nan::Persistent<v8::String> mask_symbol;
+	static Nan::Persistent<v8::String> invert_symbol;
+	static Nan::Persistent<v8::String> ext_symbol;
+	static Nan::Persistent<v8::String> rtr_symbol;
+	static Nan::Persistent<v8::String> err_symbol;
+	static Nan::Persistent<v8::String> data_symbol;
 public:
 	static void Init(v8::Local<v8::Object> exports)  {
 		Nan::HandleScope scope;
@@ -92,22 +92,22 @@ public:
 		Nan::SetPrototypeMethod(tpl, "disableLoopback", DisableLoopback);
 
 		// symbols
-		tssec_symbol.Reset(v8::String("ts_sec"));
-		tsusec_symbol.Reset(String("ts_usec");
-		id_symbol.Reset(String("id"));
-		mask_symbol.Reset(String("mask"));
-		invert_symbol.Reset(String("invert"));
-		ext_symbol.Reset(String::New("ext"));
-		rtr_symbol.Reset(String::New("rtr"));
-		err_symbol.Reset(String::New("err"));
-		data_symbol.Reset(String::New("data"));
+		tssec_symbol.Reset(Nan::New("ts_sec").ToLocalChecked());
+		tsusec_symbol.Reset(Nan::New("ts_usec").ToLocalChecked());
+		id_symbol.Reset(Nan::New("id").ToLocalChecked());
+		mask_symbol.Reset(Nan::New("mask").ToLocalChecked());
+		invert_symbol.Reset(Nan::New("invert").ToLocalChecked());
+		ext_symbol.Reset(Nan::New("ext").ToLocalChecked());
+		rtr_symbol.Reset(Nan::New("rtr").ToLocalChecked());
+		err_symbol.Reset(Nan::New("err").ToLocalChecked());
+		data_symbol.Reset(Nan::New("data").ToLocalChecked());
 		
 		// constructor
 		constructor.Reset(tpl->GetFunction());
 		exports->Set(Nan::New("RawChannel").ToLocalChecked(), tpl->GetFunction());
 	}
 private:
-	explicit RawChannel(const char *name, bool timestamps = false) : value_(value) : m_Thread(0), m_Name(name), m_SocketFd(-1)
+	explicit RawChannel(const char *name, bool timestamps = false) : m_Thread(0), m_Name(name), m_SocketFd(-1)
 	{
 		m_SocketFd = socket(PF_CAN, SOCK_RAW, CAN_RAW);
 		m_ThreadStopRequested = false;
@@ -168,7 +168,7 @@ private:
 		CHECK_CONDITION(info.Length() >= 1, "Too few arguments");
 		CHECK_CONDITION(info[0]->IsString(), "First argument must be a string");
 
-		String::AsciiValue ascii(info[0]->ToString());
+		Nan::Utf8String ascii(info[0]->ToString());
 
 		if (info.Length() >= 2)
 		{
@@ -200,18 +200,19 @@ private:
 
 		CHECK_CONDITION(info[0]->IsString(), "First argument must be a string");
 
-		Persistent<Function> func;
-		Persistent<Object> object;
+		Nan::Persistent<Function> func;
+		Nan::Persistent<Object> object;
 
 		if (info[1]->IsFunction())
-			func = Persistent<Function>::New(info[1].As<Function>());
+			func.Reset(info[1].As<Function>());
 
 		if (info.Length() >= 3)
 		{
 			if (info[2]->IsObject())
-				object = Persistent<Object>::New(info[2]->ToObject());
+				object.Reset(info[2]->ToObject());
 		}
 
+		
 		struct listener *listener = new struct listener;
 		listener->handle = object;
 		listener->callback = func;
@@ -229,17 +230,17 @@ private:
 	{
 		RawChannel* hw = ObjectWrap::Unwrap<RawChannel>(info.Holder());
 	
-		if (!hw->IsValid())
-			return ThrowException(Exception::Error(String::New("Cannot start invalid channel")));
-
-		uv_async_init(uv_default_loop(), &hw->m_AsyncReceiverReady, async_receiver_ready_cb);
+		CHECK_CONDITION(hw->IsValid(), "Cannot start invalid channel");
+		
+		// FIXME: why is an cast on the third argument required
+		// see: https://github.com/nodejs/nan/issues/151
+		uv_async_init(uv_default_loop(), &hw->m_AsyncReceiverReady, (uv_async_cb) async_receiver_ready_cb);
 		hw->m_AsyncReceiverReady.data = hw;
 
 		hw->m_ThreadStopRequested = false;
 		pthread_create(&hw->m_Thread, NULL, c_thread_entry, hw);
 
-		if (!hw->m_Thread)
-			return ThrowException(Exception::Error(String::New("Error starting dispatch thread")));
+		CHECK_CONDITION(hw->m_Thread, "Error starting dispatch thread");
 
 		hw->Ref();
 	
@@ -272,9 +273,9 @@ private:
 
 		CHECK_CONDITION(info.Length() >= 1, "Invalid arguments");
 		CHECK_CONDITION(info[0]->IsObject(), "First argument must be an Object");
-		CHECK_CONDITION(hw->IsValid()(), "Invalid channel!");
+		CHECK_CONDITION(hw->IsValid(), "Invalid channel!");
 		struct can_frame frame;
-		Local<Object> obj =  info[0]->ToObject();
+		v8::Local<Object> obj =  info[0]->ToObject();
 
 		// TODO: Check for correct structure of message object
 		frame.can_id = obj->Get(id_symbol)->Uint32Value();
@@ -375,8 +376,8 @@ private:
     uv_async_t m_AsyncReceiverReady;
 	
     struct listener {
-        Persistent<Object> handle;
-        Persistent<Function> callback;
+        Nan::Persistent<Object> handle;
+        Nan::Persistent<Function> callback;
     };
 
     vector<struct listener *> m_Listeners;
@@ -516,15 +517,15 @@ private:
 };
 
 Nan::Persistent<v8::Function> RawChannel::constructor;
-Nan::Persistent<String> RawChannel::tssec_symbol;
-Nan::Persistent<String> RawChannel::tsusec_symbol;
-Nan::Persistent<String> RawChannel::id_symbol;
-Nan::Persistent<String> RawChannel::mask_symbol;
-Nan::Persistent<String> RawChannel::invert_symbol;
-Nan::Persistent<String> RawChannel::ext_symbol;
-Nan::Persistent<String> RawChannel::rtr_symbol;
-Nan::Persistent<String> RawChannel::err_symbol;
-Nan::Persistent<String> RawChannel::data_symbol;
+Nan::Persistent<v8::String> RawChannel::tssec_symbol;
+Nan::Persistent<v8::String> RawChannel::tsusec_symbol;
+Nan::Persistent<v8::String> RawChannel::id_symbol;
+Nan::Persistent<v8::String> RawChannel::mask_symbol;
+Nan::Persistent<v8::String> RawChannel::invert_symbol;
+Nan::Persistent<v8::String> RawChannel::ext_symbol;
+Nan::Persistent<v8::String> RawChannel::rtr_symbol;
+Nan::Persistent<v8::String> RawChannel::err_symbol;
+Nan::Persistent<v8::String> RawChannel::data_symbol;
 
 void InitAll(v8::Local<v8::Object> exports) {
   RawChannel::Init(exports);
