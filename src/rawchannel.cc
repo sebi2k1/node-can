@@ -448,7 +448,7 @@ private:
 		{
 			v8::TryCatch try_catch;
 
-			v8::Local<v8::Object> obj = v8::Object::New();
+			v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
 			canid_t id = frame.can_id;
 			bool isEff = frame.can_id & CAN_EFF_FLAG;
@@ -466,34 +466,29 @@ private:
 
 				if (likely(ioctl(m_SocketFd, SIOCGSTAMP, &tv) >= 0))
 				{
-					obj->Set(tssec_symbol, v8::Uint32::NewFromUnsigned(tv.tv_sec), v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
-					obj->Set(tsusec_symbol, v8::Uint32::NewFromUnsigned(tv.tv_usec), v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
+					Nan::Set(obj, tssec_symbol, Nan::New<v8::Int32>(tv.tv_sec)); //, v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
+					Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)tv.tv_usec)); //, v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
 				}
 			}
 
-			obj->Set(id_symbol, v8::Uint32::New(id), v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
+			Nan::Set(obj, id_symbol, Nan::New(id)); //, v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
 
 			if (isEff)
-				obj->Set(ext_symbol, v8::Boolean::New(isEff), v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
+				Nan::Set(obj, ext_symbol, Nan::New(isEff)); //, v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
 
 			if (isRtr)
-				obj->Set(rtr_symbol, v8::Boolean::New(isRtr), v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
+				Nan::Set(obj, rtr_symbol, Nan::New(isRtr)); //, v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
 
 			if (isErr)
-				obj->Set(err_symbol, v8::Boolean::New(isErr), v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
-
-		v8::Local<node::Buffer> buffer = node::Buffer::New((char *)frame.data, frame.can_dlc & 0xf);
-
-		obj->Set(data_symbol, buffer->handle_, v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
+				Nan::Set(obj, err_symbol, Nan::New(isErr)); //, v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
+      
+      Nan::Set(obj, data_symbol, Nan::CopyBuffer((char *)frame.data, frame.can_dlc & 0xf).ToLocalChecked()); //, v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
 
 			for (size_t i = 0; i < m_Listeners.size(); i++)
 			{
 				struct listener *listener = m_Listeners.at(i);
-
-				if (listener->handle.IsEmpty())
-					listener->callback->Call(Context::GetCurrent()->Global(), 1, &argv[0]);
-				else
-					listener->callback->Call(listener->handle, 1, &argv[0]);
+				Nan::Callback cb(listener->callback);
+        cb->Call(listener->handle.IsEmpty()?Context::GetCurrent()->Global():listener->handle, 1, &argv[0]);
 			}
 
 			if (unlikely(try_catch.HasCaught()))
