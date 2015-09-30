@@ -454,29 +454,32 @@ private:
 
 				if (likely(ioctl(m_SocketFd, SIOCGSTAMP, &tv) >= 0))
 				{
-					Nan::Set(obj, tssec_symbol, Nan::New((int32_t)tv.tv_sec)); //, v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
-					Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)tv.tv_usec)); //, v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
+					Nan::Set(obj, tssec_symbol, Nan::New((int32_t)tv.tv_sec));
+					Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)tv.tv_usec));
 				}
 			}
 
-			Nan::Set(obj, id_symbol, Nan::New(id)); //, v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
+			Nan::Set(obj, id_symbol, Nan::New(id));
 
 			if (isEff)
-				Nan::Set(obj, ext_symbol, Nan::New(isEff)); //, v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
+				Nan::Set(obj, ext_symbol, Nan::New(isEff));
 
 			if (isRtr)
-				Nan::Set(obj, rtr_symbol, Nan::New(isRtr)); //, v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
+				Nan::Set(obj, rtr_symbol, Nan::New(isRtr));
 
 			if (isErr)
-				Nan::Set(obj, err_symbol, Nan::New(isErr)); //, v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
+				Nan::Set(obj, err_symbol, Nan::New(isErr));
       
-      Nan::Set(obj, data_symbol, Nan::CopyBuffer((char *)frame.data, frame.can_dlc & 0xf).ToLocalChecked()); //, v8::PropertyAttribute(v8::ReadOnly|v8::DontDelete));
+      Nan::Set(obj, data_symbol, Nan::CopyBuffer((char *)frame.data, frame.can_dlc & 0xf).ToLocalChecked());
 
 			for (size_t i = 0; i < m_Listeners.size(); i++)
 			{
 				struct listener *listener = m_Listeners.at(i);
-				Nan::Callback callback(Nan::New(listener->callback));
-        callback.Call(1, argv);
+ 				Nan::Callback callback(Nan::New(listener->callback));
+				if (listener->handle.IsEmpty())
+          callback.Call(1, argv);
+  			else
+  			  callback.Call(Nan::New(listener->handle), 1, argv);
 			}
 
 			if (unlikely(try_catch.HasCaught()))
