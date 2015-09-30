@@ -1,5 +1,5 @@
 /* Copyright Sebastian Haas <sebastian@sebastianhaas.info>. All rights reserved.
- * updated for NodeJs 4.X using NAN by Daniel Gross <dgross@intronik.de>
+ * Updated for NodeJs 4.X using NAN by Daniel Gross <dgross@intronik.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -144,12 +144,12 @@ private:
 			pthread_join(m_Thread, NULL);
 	}
 
-    /**
-     * Create a new CAN channel object
-     * @constructor RawChannel
-     * @param interface {string} interface name to create channel on (e.g. can0)
-     * @return new RawChannel object
-     */
+  /**
+   * Create a new CAN channel object
+   * @constructor RawChannel
+   * @param interface {string} interface name to create channel on (e.g. can0)
+   * @return new RawChannel object
+   */
 	static NAN_METHOD(New) {	
 		bool timestamps = false;
 
@@ -173,13 +173,13 @@ private:
 		info.GetReturnValue().Set(info.This());
 	}
 	
-    /**
-     * Add listener to receive certain notifications
-     * @method addListener
-     * @param event {string} onMessage to register for incoming messages
-     * @param callback {any} JS callback object
-     * @param instance {any} Optional instance pointer to call callback
-     */
+  /**
+   * Add listener to receive certain notifications
+   * @method addListener
+   * @param event {string} onMessage to register for incoming messages
+   * @param callback {any} JS callback object
+   * @param instance {any} Optional instance pointer to call callback
+   */
 	static NAN_METHOD(AddListener)
 	{
 		Nan::HandleScope scope;
@@ -200,10 +200,10 @@ private:
 		info.GetReturnValue().Set(info.This());
 	}
 	
-    /**
-     * Start operation on this CAN channel
-     * @method start
-     */
+  /**
+   * Start operation on this CAN channel
+   * @method start
+   */
 	static NAN_METHOD(Start)
 	{
 		RawChannel* hw = ObjectWrap::Unwrap<RawChannel>(info.Holder());
@@ -225,10 +225,10 @@ private:
 		info.GetReturnValue().Set(info.This());
 	}
 	
-    /**
-     * Stop any operations on this CAN channel
-     * @method stop
-     */
+  /**
+   * Stop any operations on this CAN channel
+   * @method stop
+   */
 	static NAN_METHOD(Stop)
 	{
 		RawChannel* hw = ObjectWrap::Unwrap<RawChannel>(info.Holder());		
@@ -285,11 +285,11 @@ private:
 		info.GetReturnValue().Set(i);
 	}
 	
-    /**
-     * Set a list of active filters to be applied for incoming messages
-     * @method setRxFilters
-     * @param filters {Object} single filter or array of filter e.g. { id: 0x1ff, mask: 0x1ff, invert: false}, result of (id & mask)
-     */
+  /**
+   * Set a list of active filters to be applied for incoming messages
+   * @method setRxFilters
+   * @param filters {Object} single filter or array of filter e.g. { id: 0x1ff, mask: 0x1ff, invert: false}, result of (id & mask)
+   */
 	static NAN_METHOD(SetRxFilters) {
 		RawChannel* hw = ObjectWrap::Unwrap<RawChannel>(info.Holder());
 		
@@ -337,10 +337,10 @@ private:
 		info.GetReturnValue().Set(info.This());		
 	}
 	
-    /**
-     * Disable loopback of channel. By default it is activated
-     * @method disableLoopback
-     */
+  /**
+   * Disable loopback of channel. By default it is activated
+   * @method disableLoopback
+   */
 	static NAN_METHOD(DisableLoopback) {
 		RawChannel* hw = ObjectWrap::Unwrap<RawChannel>(info.Holder());
 		CHECK_CONDITION(hw->IsValid(), "Channel not ready");
@@ -350,146 +350,145 @@ private:
 	}
 		
 private:
-    uv_async_t m_AsyncReceiverReady;
-	
-    struct listener {
-        Nan::Persistent<v8::Object> handle;
-        Nan::Persistent<v8::Function> callback;
-    };
+  uv_async_t m_AsyncReceiverReady;
 
-    std::vector<struct listener *> m_Listeners;
+  struct listener {
+      Nan::Persistent<v8::Object> handle;
+      Nan::Persistent<v8::Function> callback;
+  };
 
-    pthread_t m_Thread;
-    std::string m_Name;
+  std::vector<struct listener *> m_Listeners;
 
-    int m_SocketFd;
-    struct sockaddr_can m_SocketAddr;
+  pthread_t m_Thread;
+  std::string m_Name;
 
-    bool m_ThreadStopRequested;
-    bool m_TimestampsSupported;
+  int m_SocketFd;
+  struct sockaddr_can m_SocketAddr;
 
-    static void * c_thread_entry(void *_this) { assert(_this); reinterpret_cast<RawChannel *>(_this)->ThreadEntry(); return NULL; }
-    
+  bool m_ThreadStopRequested;
+  bool m_TimestampsSupported;
+
+  static void * c_thread_entry(void *_this) { assert(_this); reinterpret_cast<RawChannel *>(_this)->ThreadEntry(); return NULL; }
+  
 	void ThreadEntry()
-	{
-		struct pollfd pfd;
+  {
+	  struct pollfd pfd;
 
-		pfd.fd = m_SocketFd;
-		pfd.events = POLLIN;
+	  pfd.fd = m_SocketFd;
+	  pfd.events = POLLIN;
 
-		while (!m_ThreadStopRequested)
-		{
-			pfd.revents = 0;
+	  while (!m_ThreadStopRequested)
+	  {
+		  pfd.revents = 0;
 
-			if (likely(poll(&pfd, 1, 100) >= 0))
-			{
-				if (likely(pfd.revents & POLLIN))
-					uv_async_send(&m_AsyncReceiverReady);
-			}
-			else
-			{
-				break;
-			}
-		}
+		  if (likely(poll(&pfd, 1, 100) >= 0))
+		  {
+			  if (likely(pfd.revents & POLLIN))
+				  uv_async_send(&m_AsyncReceiverReady);
+		  }
+		  else
+		  {
+			  break;
+		  }
+	  }
 	}
-	
+
   bool IsValid() { return m_SocketFd >= 0; }
 
-	static bool ObjectToFilter(v8::Handle<v8::Object> object, struct can_filter *rfilter)
+  static bool ObjectToFilter(v8::Handle<v8::Object> object, struct can_filter *rfilter)
 	{
-		Nan::HandleScope scope;
+	  Nan::HandleScope scope;
 
-		v8::Handle<v8::Value> id = object->Get(id_symbol);
-		v8::Handle<v8::Value> mask = object->Get(mask_symbol);
+	  v8::Handle<v8::Value> id = object->Get(id_symbol);
+	  v8::Handle<v8::Value> mask = object->Get(mask_symbol);
 
-		if (!id->IsUint32() || !mask->IsUint32())
-			return false;
+	  if (!id->IsUint32() || !mask->IsUint32())
+		  return false;
 
-		rfilter->can_id = id->Uint32Value();
-		rfilter->can_mask = mask->Uint32Value();
+	  rfilter->can_id = id->Uint32Value();
+	  rfilter->can_mask = mask->Uint32Value();
 
-		if (object->Get(invert_symbol)->IsTrue())
-			rfilter->can_id |= CAN_INV_FILTER;
+	  if (object->Get(invert_symbol)->IsTrue())
+		  rfilter->can_id |= CAN_INV_FILTER;
 
-		rfilter->can_mask &= ~CAN_ERR_FLAG;
+	  rfilter->can_mask &= ~CAN_ERR_FLAG;
 
-		return true;
-	}
-	
-	static void async_receiver_ready_cb(uv_async_t* handle, int status)
-	{
-		assert(handle);
-		assert(handle->data);
-		reinterpret_cast<RawChannel*>(handle->data)->async_receiver_ready(status);
-	}
+	  return true;
+  }
 
-	void async_receiver_ready(int status)
-	{
-		Nan::HandleScope scope;
+  static void async_receiver_ready_cb(uv_async_t* handle, int status)
+  {
+	  assert(handle);
+	  assert(handle->data);
+	  reinterpret_cast<RawChannel*>(handle->data)->async_receiver_ready(status);
+  }
 
-		struct can_frame frame;
+  void async_receiver_ready(int status)
+  {
+	  Nan::HandleScope scope;
 
-		unsigned int framesProcessed = 0;
+	  struct can_frame frame;
 
-		while (recv(m_SocketFd, &frame, sizeof(struct can_frame), MSG_DONTWAIT) > 0)
-		{
-			Nan::TryCatch try_catch;
+	  unsigned int framesProcessed = 0;
 
-			v8::Local<v8::Object> obj = Nan::New<v8::Object>();
+	  while (recv(m_SocketFd, &frame, sizeof(struct can_frame), MSG_DONTWAIT) > 0)
+	  {
+		  Nan::TryCatch try_catch;
 
-			canid_t id = frame.can_id;
-			bool isEff = frame.can_id & CAN_EFF_FLAG;
-			bool isRtr = frame.can_id & CAN_RTR_FLAG;
-			bool isErr = frame.can_id & CAN_ERR_FLAG;
+		  v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
-			id = isEff ? frame.can_id & CAN_EFF_MASK : frame.can_id & CAN_SFF_MASK;
+		  canid_t id = frame.can_id;
+		  bool isEff = frame.can_id & CAN_EFF_FLAG;
+		  bool isRtr = frame.can_id & CAN_RTR_FLAG;
+		  bool isErr = frame.can_id & CAN_ERR_FLAG;
 
-			v8::Local<v8::Value> argv[] = {
-			  obj,
-			};
-			
-			if (m_TimestampsSupported)
-			{
-				struct timeval tv;
+		  id = isEff ? frame.can_id & CAN_EFF_MASK : frame.can_id & CAN_SFF_MASK;
 
-				if (likely(ioctl(m_SocketFd, SIOCGSTAMP, &tv) >= 0))
-				{
-					Nan::Set(obj, tssec_symbol, Nan::New((int32_t)tv.tv_sec));
-					Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)tv.tv_usec));
-				}
-			}
+		  v8::Local<v8::Value> argv[] = {
+		    obj,
+		  };
+		
+		  if (m_TimestampsSupported)
+		  {
+			  struct timeval tv;
 
-			Nan::Set(obj, id_symbol, Nan::New(id));
+			  if (likely(ioctl(m_SocketFd, SIOCGSTAMP, &tv) >= 0))
+			  {
+				  Nan::Set(obj, tssec_symbol, Nan::New((int32_t)tv.tv_sec));
+				  Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)tv.tv_usec));
+			  }
+		  }
 
-			if (isEff)
-				Nan::Set(obj, ext_symbol, Nan::New(isEff));
+		  Nan::Set(obj, id_symbol, Nan::New(id));
 
-			if (isRtr)
-				Nan::Set(obj, rtr_symbol, Nan::New(isRtr));
+		  if (isEff)
+			  Nan::Set(obj, ext_symbol, Nan::New(isEff));
 
-			if (isErr)
-				Nan::Set(obj, err_symbol, Nan::New(isErr));
+		  if (isRtr)
+			  Nan::Set(obj, rtr_symbol, Nan::New(isRtr));
+
+		  if (isErr)
+			  Nan::Set(obj, err_symbol, Nan::New(isErr));
       
       Nan::Set(obj, data_symbol, Nan::CopyBuffer((char *)frame.data, frame.can_dlc & 0xf).ToLocalChecked());
 
-			for (size_t i = 0; i < m_Listeners.size(); i++)
-			{
-				struct listener *listener = m_Listeners.at(i);
+		  for (size_t i = 0; i < m_Listeners.size(); i++)
+		  {
+			  struct listener *listener = m_Listeners.at(i);
  				Nan::Callback callback(Nan::New(listener->callback));
-				if (listener->handle.IsEmpty())
+			  if (listener->handle.IsEmpty())
           callback.Call(1, argv);
   			else
   			  callback.Call(Nan::New(listener->handle), 1, argv);
-			}
+		  }
 
-			if (unlikely(try_catch.HasCaught()))
-				Nan::FatalException(try_catch);
+		  if (unlikely(try_catch.HasCaught()))
+			  Nan::FatalException(try_catch);
 
-			if (++framesProcessed > MAX_FRAMES_PER_ASYNC_EVENT)
-				break;
-		}
-	}
-
+		  if (++framesProcessed > MAX_FRAMES_PER_ASYNC_EVENT)
+			  break;
+	  }
+  }
 };
 
 Nan::Persistent<v8::Function> RawChannel::constructor;
