@@ -188,16 +188,13 @@ private:
    */
   static NAN_METHOD(AddListener)
   {
-    Nan::HandleScope scope;
     RawChannel* hw = Nan::ObjectWrap::Unwrap<RawChannel>(info.This());
-
     CHECK_CONDITION(info.Length() >= 2, "Too few arguments");
-
     CHECK_CONDITION(info[0]->IsString(), "First argument must be a string");
+    CHECK_CONDITION(info[1]->IsFunction(), "Second argument must be a function");
 
     struct listener *listener = new struct listener;
-    if (info[1]->IsFunction())
-      listener->callback.Reset(info[1].As<v8::Function>());
+    listener->callback.Reset(info[1].As<v8::Function>());
 
     if (info.Length() >= 3 && info[2]->IsObject())
         listener->handle.Reset(info[2]->ToObject());
