@@ -1,5 +1,5 @@
 /* Copyright Sebastian Haas <sebastian@sebastianhaas.info>. All rights reserved.
- * Updated for NodeJs 4.X using NAN by Daniel Gross <dgross@intronik.de>
+ * Updated for NodeJS 4.X using NAN by Daniel Gross <dgross@intronik.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
