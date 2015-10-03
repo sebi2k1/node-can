@@ -7,7 +7,7 @@ exports['receive_signals'] = function(test) {
 	var network = can.parseNetworkDescription("./tests/samples.kcd");
 	var channel = can.createRawChannel("vcan0");
 	var gen_channel = can.createRawChannel("vcan0");
-	var db      = new can.DatabaseService(channel, network.buses["Motor"].messages);
+	var db      = new can.DatabaseService(channel, network.buses["Motor"]);
 
 	channel.start();
 	gen_channel.start();
@@ -54,8 +54,8 @@ exports['transmit_receive_signals'] = function(test) {
 	var channel = can.createRawChannel("vcan0");
 	var gen_channel = can.createRawChannel("vcan0");
 
-	var rx_db = new can.DatabaseService(channel, network.buses["Motor"].messages);
-	var tx_db = new can.DatabaseService(gen_channel, network.buses["Motor"].messages);
+	var rx_db = new can.DatabaseService(channel, network.buses["Motor"]);
+	var tx_db = new can.DatabaseService(gen_channel, network.buses["Motor"]);
 
 	channel.start();
 	gen_channel.start();

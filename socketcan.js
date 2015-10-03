@@ -250,6 +250,7 @@ DatabaseService.prototype.onMessage = function (msg) {
 		console.log("Message ID " + msg.id + " not found");
 		return;
 	}
+
 	// this is the possible multiplexor for the signals coming in.
 	var b1mux = _signals.decode_signal(msg.data, 0, 8, true, false);
 
@@ -319,8 +320,6 @@ DatabaseService.prototype.send = function (msg_name) {
 			continue;
 
 		if (mux) {
-			// console.log("SEND muxed - " + mux + " is it in this list " +
-			// s.muxGroup + " = " + s.muxGroup.indexOf(parseInt(mux,16)) )
 			if (s.muxGroup.indexOf(parseInt(mux, 16)) === -1) {
 				continue;
 			}
@@ -339,9 +338,9 @@ DatabaseService.prototype.send = function (msg_name) {
 			val = parseInt(Math.round(val));
 
 		if (m.len == 0) {
-			// console.log("0 length packet - " + m.id);
 			return;
 		}
+
 		_signals.encode_signal(canmsg.data, s.bitOffset, s.bitLength,
 				s.endianess == 'little', s.type == 'signed', val);
 	}
