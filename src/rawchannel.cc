@@ -93,7 +93,7 @@ public:
     Nan::SetPrototypeMethod(tpl, "send",           Send);
     Nan::SetPrototypeMethod(tpl, "setRxFilters",   SetRxFilters);
     Nan::SetPrototypeMethod(tpl, "disableLoopback", DisableLoopback);
-    
+
     // constructor
     constructor.Reset(tpl->GetFunction());
     exports->Set(Nan::New("RawChannel").ToLocalChecked(), tpl->GetFunction());
@@ -178,7 +178,7 @@ private:
 
     info.GetReturnValue().Set(info.This());
   }
-  
+
   /**
    * Add listener to receive certain notifications
    * @method addListener
@@ -198,8 +198,8 @@ private:
 
     if (info.Length() >= 3 && info[2]->IsObject())
         listener->handle.Reset(info[2]->ToObject());
-    
-    hw->m_Listeners.push_back(listener);    
+
+    hw->m_Listeners.push_back(listener);
     info.GetReturnValue().Set(info.This());
   }
 
@@ -288,7 +288,7 @@ private:
 
     info.GetReturnValue().Set(i);
   }
-  
+
   /**
    * Set a list of active filters to be applied for incoming messages
    * @method setRxFilters
@@ -338,7 +338,7 @@ private:
 
     if (rfilter)
       free(rfilter);
-    
+
     info.GetReturnValue().Set(info.This());
   }
 
@@ -475,7 +475,7 @@ private:
 
       if (isErr)
         Nan::Set(obj, err_symbol, Nan::New(isErr));
-      
+
       Nan::Set(obj, data_symbol, Nan::CopyBuffer((char *)frame.data, frame.can_dlc & 0xf).ToLocalChecked());
 
       for (size_t i = 0; i < m_Listeners.size(); i++)
