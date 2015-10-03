@@ -31,7 +31,7 @@ var fs = require('fs');
 // Parse database
 var network = can.parseNetworkDescription("samples/can_definition_sample.kcd");
 var channel = can.createRawChannel("vcan0");
-var db      = new can.DatabaseService(channel, network.buses["Motor"].messages);
+var db      = new can.DatabaseService(channel, network.buses["Motor"]);
 
 channel.start();
 
