@@ -60,11 +60,11 @@ static u_int64_t _getvalue(u_int8_t * data,
         {
             size_t bitsCopied = bitsLeft >= 8 ? 8 : bitsLeft;
             if ( initial_pass && bitsLeft != intraByteOffset )
-            	bitsCopied -= intraByteOffset;
+                bitsCopied -= intraByteOffset;
 
             size_t shift = 56 - (8 * thisByte);
             if( initial_pass )
-            	shift += intraByteOffset;
+                shift += intraByteOffset;
 
             uint64_t byteMask = ((1 << bitsCopied) - 1); // 0x1111
 
@@ -127,9 +127,9 @@ NAN_METHOD(DecodeSignal)
     // Value shall be interpreted as signed (2's complement)
     if (isSigned && val & (1 << (bitLength - 1))) {
         int32_t tmp = -1 * (~((UINT64_MAX << bitLength) | val) + 1);
-	retval = Nan::New(tmp);
+        retval = Nan::New(tmp);
     } else {
-	retval = Nan::New((u_int32_t)val);
+        retval = Nan::New((u_int32_t)val);
     }
 
     info.GetReturnValue().Set(retval);
@@ -160,16 +160,16 @@ void _setvalue(u_int32_t offset, u_int32_t bitLength, ENDIANESS endianess, u_int
         // while there are bits to process
         for ( ; bitsLeft > 0; )
         {
-      	   // process 8 at a time
-      	   //    what about starting at offset and moving 8 bits
-      	  //      ? it would be 4 and 4
-      	   //  bitsMoved =
+            // process 8 at a time
+            //    what about starting at offset and moving 8 bits
+            //      ? it would be 4 and 4
+            //  bitsMoved =
             size_t bitsMoved = bitsLeft < 8 ? bitsLeft : 8;
             if ( initial_pass && bitsLeft != intraByteOffset)
-            	bitsMoved -= intraByteOffset;
+                bitsMoved -= intraByteOffset;
             size_t shift = 56 - ( 8 * thisByte );
-            if( initial_pass )
-            	shift += intraByteOffset ;
+            if (initial_pass)
+                shift += intraByteOffset;
 
             uint64_t byteMask = ((1 << bitsMoved) - 1);
 
@@ -240,7 +240,7 @@ NAN_METHOD(EncodeSignal)
         }
     }
 
-	    raw_value = info[5]->ToNumber()->Uint32Value();
+    raw_value = info[5]->ToNumber()->Uint32Value();
 
     size_t maxBytes = std::min<u_int32_t>(Buffer::Length(jsData), sizeof(data));
 

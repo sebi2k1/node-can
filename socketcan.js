@@ -257,22 +257,17 @@ DatabaseService.prototype.onMessage = function (msg) {
 	// Let the C-Portition extract and convert the signal
 	for (i in m.signals) {
 		var s = m.signals[i];
+
 		if (s.value === undefined)
 			continue;
+
 		// if this is a mux signal and the muxor isnt in my list...
 		if (m.muxed && s.muxGroup && s.muxGroup.indexOf(b1mux) == -1) {
 			continue;
 		}
 
-		var mask = 0;
-		for (var j = 0; j < s.bitLength; j++) {
-			mask |= (1 << j);
-		}
-
 		var val = _signals.decode_signal(msg.data, s.bitOffset, s.bitLength,
 				s.endianess == 'little', s.type == 'signed');
-
-		val &= mask;
 
 		if (s.slope)
 			val *= s.slope;
