@@ -55,11 +55,14 @@ There are two options for installing node-can:
 1. Clone / download node-can from [GitHub](https://github.com/sebi2k1/node-can),
    then:
 
-    npm i
-    npm run configure
-    npm run build
-
+```shell
+    $ npm i
+    $ npm run configure
+    $ npm run build
+```
 
 2. Install via npm:
 
-    npm install socketcan
+```shell
+    $ npm install socketcan
+```
