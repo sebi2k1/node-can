@@ -38,7 +38,7 @@ channel.start();
 // Register a listener to get any value changes
 db.messages["CruiseControlStatus"].signals["SpeedKm"].onChange(function(s) {
    console.log("SpeedKm " + s.value);
-}
+});
 
 // Update tank temperature
 db.messages["TankController"].signals["TankTemperature"].update(80);
