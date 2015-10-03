@@ -62,10 +62,10 @@ function Signal(desc)
 	this.bitLength = desc['bitLength'];
 	this.endianess = desc['endianess'];
 	this.type = desc['type'];
-	
+
 	this.intercept = desc['intercept'];
 	this.slope = desc['slope'];
-	
+
 	this.minValue = desc['minValue'];
 	this.maxValue = desc['maxValue'];
 
@@ -83,14 +83,14 @@ function Signal(desc)
 
 	/**
 	 * Current value
-	 * 
+	 *
 	 * @attribute value
 	 * @final
 	 */
 	this.value = desc['defaultValue'];
 	if (!this.value)
 		this.value = 0;
-	
+
 	this.listeners = [];
 }
 
@@ -145,24 +145,24 @@ function Message(desc)
          * @final
          */
 	this.id = desc.id;
-        
+
 	/**
          * Extended Frame Format used
          * @attribute ext
          * @final
          */
 	this.ext = desc.ext;
-	
+
         /**
          * Symbolic name
          * @attribute name
          * @final
          */
 	this.name = desc.name;
-	
+
         /**
          * Length in bytes of resulting CAN message
-	 * 
+	 *
 	 * @attribute len
 	 * @final
 	 */
@@ -170,7 +170,7 @@ function Message(desc)
 
 	/**
 	 * This is the time frame that the message gets generated
-	 * 
+	 *
 	 * @attribute interval
 	 * @final
 	 */
@@ -178,7 +178,7 @@ function Message(desc)
 
 	/**
 	 * This is tells us the message is mutliplexed.
-	 * 
+	 *
 	 * @attribute muxed
 	 * @final
 	 */
@@ -190,7 +190,7 @@ function Message(desc)
          * @final
          */
 	this.signals = [];
-	
+
 	for (i in desc['signals']) {
 		var s = desc['signals'][i];
 		if (this.signals[s.name] && this.signals[s.name].muxGroup) {
@@ -214,7 +214,7 @@ function Message(desc)
  */
 function DatabaseService(channel, db_desc) {
 	this.channel = channel;
-	
+
         /**
          * Named array of known messages. Accessible via index and name.
          * @attribute {Message} messages
@@ -229,7 +229,7 @@ function DatabaseService(channel, db_desc) {
 		this.messages[id] = nm;
 		this.messages[m.name] = nm;
 	}
-	
+
 	// Subscribe to any incoming messages
 	channel.addListener("onMessage", this.onMessage, this);
 }
@@ -240,11 +240,11 @@ DatabaseService.prototype.onMessage = function (msg) {
 		return;
 	if (msg.rtr)
 		return;
-	
+
 	id = msg.id | (msg.ext ? 1 : 0) << 31;
 
 	var m = this.messages[id];
-	
+
 	if (!m)
 	{
 		console.log("Message ID " + msg.id + " not found");
@@ -298,7 +298,7 @@ DatabaseService.prototype.send = function (msg_name) {
 
 	if (!m)
 		throw msg_name + " not defined";
-	
+
 	var canmsg = {
 		id: m.id,
 		ext: m.ext,
@@ -306,7 +306,7 @@ DatabaseService.prototype.send = function (msg_name) {
 		data : (m.len > 0 && m.len < 8) ? new Buffer(m.len) : new Buffer(8)
 	};
 
-	canmsg.data.fill(0); // should be 0xFF for j1939 message def. 
+	canmsg.data.fill(0); // should be 0xFF for j1939 message def.
 
 
 	if (mux) {
@@ -331,13 +331,13 @@ DatabaseService.prototype.send = function (msg_name) {
 		// Apply factor/intercept and convert to Integer
 		if (s.intercept)
 			val -= s.intercept;
-		
+
 		if (s.slope)
 			val /= s.slope;
-		
+
 		if (typeof(val) == 'double')
 			val = parseInt(Math.round(val));
-		
+
 		if (m.len == 0) {
 			// console.log("0 length packet - " + m.id);
 			return;
@@ -345,7 +345,7 @@ DatabaseService.prototype.send = function (msg_name) {
 		_signals.encode_signal(canmsg.data, s.bitOffset, s.bitLength,
 				s.endianess == 'little', s.type == 'signed', val);
 	}
-	
+
 	this.channel.send(canmsg);
 }
 

@@ -104,7 +104,7 @@ NAN_METHOD(DecodeSignal)
     CHECK_CONDITION(info[0]->IsObject(), "Invalid argument");
 
     Local<Object> jsData = info[0]->ToObject();
- 
+
     CHECK_CONDITION(Buffer::HasInstance(jsData), "Invalid argument");
     CHECK_CONDITION(info[1]->IsUint32(), "Invalid offset");
     CHECK_CONDITION(info[2]->IsUint32(), "Invalid bit length");
@@ -216,7 +216,7 @@ NAN_METHOD(EncodeSignal)
     CHECK_CONDITION(info[0]->IsObject(), "Invalid argument");
 
     Local<Object> jsData = info[0]->ToObject();
- 
+
     CHECK_CONDITION(Buffer::HasInstance(jsData), "Invalid argument");
     CHECK_CONDITION(info[1]->IsUint32(), "Invalid offset");
     CHECK_CONDITION(info[2]->IsUint32(), "Invalid bit length");
