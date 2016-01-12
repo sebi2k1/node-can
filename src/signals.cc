@@ -42,48 +42,45 @@ static u_int64_t _getvalue(u_int8_t * data,
                            u_int32_t length,
                            ENDIANESS byteOrder)
 {
-    uint64_t d = be64toh(*((uint64_t *)&data[0]));
+    uint64_t d;
     uint64_t o = 0;
 
-    if (byteOrder == ENDIANESS_INTEL)
-    {
-        //d <<= offset;
+    if (byteOrder == ENDIANESS_INTEL) {
+        d = le64toh(*((uint64_t *)&data[0]));
+    } else {
+        d = be64toh(*((uint64_t *)&data[0]));
+    }
 
-        size_t intraByteOffset = offset % 8;
-        size_t thisByte = offset / 8;
+    uint64_t m = (1 << length) - 1;
+    size_t shift;
+    if (byteOrder == ENDIANESS_INTEL) {
+        shift = offset;
+    } else {
+        shift = 64 - offset - length;
+    }
 
-        size_t bitsLeft = length;
-        size_t outputShift = 0;
+    o = (d >> shift) & m;
 
-        bool initial_pass = true;
-        for (; bitsLeft > 0 ;)
-        {
-            size_t bitsCopied = bitsLeft >= 8 ? 8 : bitsLeft;
-            if ( initial_pass && bitsLeft != intraByteOffset )
-                bitsCopied -= intraByteOffset;
-
-            size_t shift = 56 - (8 * thisByte);
-            if( initial_pass )
-                shift += intraByteOffset;
-
-            uint64_t byteMask = ((1 << bitsCopied) - 1); // 0x1111
-
-            o |= ((d >> shift) & byteMask) << outputShift ;
-
-            thisByte++;
-            initial_pass = false;
-            bitsLeft -= bitsCopied;
-            outputShift += bitsCopied;
+#ifdef KAYAK_DATA_CHECK
+    size_t i;
+    int bitNr;
+    uint64_t val = 0;
+    if (byteOrder == ENDIANESS_INTEL) {
+        for (i = 0; i < length; i++) {
+            bitNr = i + offset;
+            val |= ((data[bitNr >> 3] >> (bitNr & 0x07)) & 1) << i;
+        }
+    } else {
+        for (i = 0; i < length; i++) {
+            bitNr = offset + length - i -1;
+            val |= ((data[bitNr >> 3] >> (7-(bitNr & 0x07))) & 1) << i;
         }
     }
-    else
-    {
-        uint64_t m = UINT64_MAX;
-        size_t shift = 64 - offset - 1;
-
-        m = (1 << length) - 1;
-        o = (d >> shift) & m;
+    
+    if (val != o) {
+        fprintf(stderr, "getvalue: got %lu, expected %lu\n", val, o);
     }
+#endif
 
     return o;
 }
@@ -137,63 +134,51 @@ NAN_METHOD(DecodeSignal)
 
 void _setvalue(u_int32_t offset, u_int32_t bitLength, ENDIANESS endianess, u_int8_t data[8], u_int64_t raw_value)
 {
-    uint64_t o = be64toh(*(uint64_t *)&data[0]);
-
-    if (endianess == ENDIANESS_INTEL)
-    {
-        size_t bitsLeft = bitLength;
-        size_t intraByteOffset = offset % 8;
-        size_t thisByte = offset / 8;  // 8 offset = 8/8 byte 1
-        // add the initial intrabyte Offset ... only matters the first time.
-        // if (12 o 8 l)
-        //             this byte
-        //           at iBO
-        //             3210 xxxx|xxxx 7654
-        //  |.... ....|.... ....|.... ....|
-        //
-        // if (8 o 19 l)
-        //             7654 3210 fedc ba98 xxxx x(+3
-        //  |.... ....|.... ....|.... ....|.... ....|
-        //
-
-        bool initial_pass = true;
-        // while there are bits to process
-        for ( ; bitsLeft > 0; )
-        {
-            // process 8 at a time
-            //    what about starting at offset and moving 8 bits
-            //      ? it would be 4 and 4
-            //  bitsMoved =
-            size_t bitsMoved = bitsLeft < 8 ? bitsLeft : 8;
-            if ( initial_pass && bitsLeft != intraByteOffset)
-                bitsMoved -= intraByteOffset;
-            size_t shift = 56 - ( 8 * thisByte );
-            if (initial_pass)
-                shift += intraByteOffset;
-
-            uint64_t byteMask = ((1 << bitsMoved) - 1);
-
-            o &= ~(byteMask << shift );
-            o |= (raw_value & byteMask) << shift;
-
-            raw_value >>= bitsMoved;
-            initial_pass = false;
-            thisByte++; // move to next Byte
-            bitsLeft -= bitsMoved; // decrement the bits processed
-        }
-    }
-    else
-    {
-        uint64_t m = ((1 << bitLength) - 1);
-        size_t shift = 64 - offset - 1;
-
-        o &= ~(m << shift);
-        o |= (raw_value & m) << shift;
+    uint64_t o;
+    if (endianess == ENDIANESS_INTEL) {
+        o = le64toh(*((uint64_t *)&data[0]));
+    } else {
+        o = be64toh(*((uint64_t *)&data[0]));
     }
 
-    o = htobe64(o);
+    uint64_t m = ((1 << bitLength) - 1);
+    size_t shift;
+    if (endianess == ENDIANESS_INTEL) {
+        shift = offset;
+    } else {
+        shift = 64 - offset - bitLength;
+    }
+
+    o &= ~(m << shift);
+    o |= (raw_value & m) << shift;
+
+    if (endianess == ENDIANESS_INTEL) {
+        o = htole64(o);
+    } else {
+        o = htobe64(o);
+    }
 
     memcpy(&data[0], &o, 8);
+
+#ifdef KAYAK_DATA_CHECK
+    size_t i;
+    int bitNr;
+    uint64_t val = 0;
+    if (endianess == ENDIANESS_INTEL) {
+        for (i = 0; i < bitLength; i++) {
+            bitNr = i + offset;
+            val |= ((data[bitNr >> 3] >> (bitNr & 0x07)) & 1) << i;
+        }
+    } else {
+        for (i = 0; i < bitLength; i++) {
+            bitNr = offset + bitLength - i -1;
+            val |= ((data[bitNr >> 3] >> (7-(bitNr & 0x07))) & 1) << i;
+        }
+    }
+    if(val != ( raw_value & m)) {
+        fprintf(stderr, "setvalue: got %lu, expected %lu\n", val, raw_value & m);
+    }
+#endif
 }
 
 // Encode signal according description
