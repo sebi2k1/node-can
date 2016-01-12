@@ -61,6 +61,27 @@ static u_int64_t _getvalue(u_int8_t * data,
 
     o = (d >> shift) & m;
 
+#ifdef KAYAK_DATA_CHECK
+    size_t i;
+    int bitNr;
+    uint64_t val = 0;
+    if (byteOrder == ENDIANESS_INTEL) {
+        for (i = 0; i < length; i++) {
+            bitNr = i + offset;
+            val |= ((data[bitNr >> 3] >> (bitNr & 0x07)) & 1) << i;
+        }
+    } else {
+        for (i = 0; i < length; i++) {
+            bitNr = offset + length - i -1;
+            val |= ((data[bitNr >> 3] >> (7-(bitNr & 0x07))) & 1) << i;
+        }
+    }
+    
+    if (val != o) {
+        fprintf(stderr, "getvalue: got %lu, expected %lu\n", val, o);
+    }
+#endif
+
     return o;
 }
 
@@ -138,6 +159,26 @@ void _setvalue(u_int32_t offset, u_int32_t bitLength, ENDIANESS endianess, u_int
     }
 
     memcpy(&data[0], &o, 8);
+
+#ifdef KAYAK_DATA_CHECK
+    size_t i;
+    int bitNr;
+    uint64_t val = 0;
+    if (endianess == ENDIANESS_INTEL) {
+        for (i = 0; i < bitLength; i++) {
+            bitNr = i + offset;
+            val |= ((data[bitNr >> 3] >> (bitNr & 0x07)) & 1) << i;
+        }
+    } else {
+        for (i = 0; i < bitLength; i++) {
+            bitNr = offset + bitLength - i -1;
+            val |= ((data[bitNr >> 3] >> (7-(bitNr & 0x07))) & 1) << i;
+        }
+    }
+    if(val != ( raw_value & m)) {
+        fprintf(stderr, "setvalue: got %lu, expected %lu\n", val, raw_value & m);
+    }
+#endif
 }
 
 // Encode signal according description
