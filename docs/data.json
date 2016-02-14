@@ -1,19 +1,8 @@
 {
     "project": {},
     "files": {
-        "src/raw.h": {
-            "name": "src/raw.h",
-            "modules": {
-                "CAN": 1
-            },
-            "classes": {
-                "RawChannel": 1
-            },
-            "fors": {},
-            "namespaces": {}
-        },
-        "can.js": {
-            "name": "can.js",
+        "socketcan.js": {
+            "name": "socketcan.js",
             "modules": {
                 "Signals": 1
             },
@@ -31,24 +20,10 @@
         }
     },
     "modules": {
-        "CAN": {
-            "name": "CAN",
-            "submodules": {},
-            "classes": {
-                "RawChannel": 1
-            },
-            "fors": {
-                "exports": 1
-            },
-            "namespaces": {},
-            "tag": "module",
-            "file": "src/raw.h",
-            "line": 51,
-            "description": "Basic CAN access"
-        },
         "Signals": {
             "name": "Signals",
             "submodules": {},
+            "elements": {},
             "classes": {
                 "exports": 1,
                 "Signal": 1,
@@ -62,26 +37,12 @@
             },
             "namespaces": {},
             "tag": "module",
-            "file": "can.js",
-            "line": 163,
+            "file": "socketcan.js",
+            "line": 205,
             "description": "The Signals modules provides an interface to access the values/signals\nencoded in CAN messages."
         }
     },
     "classes": {
-        "RawChannel": {
-            "name": "RawChannel",
-            "shortname": "RawChannel",
-            "classitems": [],
-            "plugins": [],
-            "extensions": [],
-            "plugin_for": [],
-            "extension_for": [],
-            "module": "CAN",
-            "namespace": "",
-            "file": "src/raw.h",
-            "line": 51,
-            "description": "A Raw channel to access a certain CAN channel (e.g. vcan0) via CAN messages."
-        },
         "exports": {
             "name": "exports",
             "shortname": "exports",
@@ -90,8 +51,7 @@
             "extensions": [],
             "plugin_for": [],
             "extension_for": [],
-            "module": "Signals",
-            "namespace": ""
+            "module": "Signals"
         },
         "Signal": {
             "name": "Signal",
@@ -103,7 +63,7 @@
             "extension_for": [],
             "module": "Signals",
             "namespace": "",
-            "file": "can.js",
+            "file": "socketcan.js",
             "line": 47,
             "description": "The actual signal."
         },
@@ -117,8 +77,8 @@
             "extension_for": [],
             "module": "Signals",
             "namespace": "",
-            "file": "can.js",
-            "line": 115,
+            "file": "socketcan.js",
+            "line": 136,
             "description": "Just a container to keep the Signals."
         },
         "DatabaseService": {
@@ -131,8 +91,8 @@
             "extension_for": [],
             "module": "Signals",
             "namespace": "",
-            "file": "can.js",
-            "line": 163,
+            "file": "socketcan.js",
+            "line": 205,
             "description": "A DatabaseService is usually generated once per bus to collect signals\ncoded in the CAN messages according a DB description.",
             "is_constructor": 1,
             "params": [
@@ -150,103 +110,10 @@
             }
         }
     },
+    "elements": {},
     "classitems": [
         {
-            "file": "src/raw.h",
-            "line": 64,
-            "description": "Create a new CAN channel object",
-            "is_constructor": 1,
-            "params": [
-                {
-                    "name": "interface",
-                    "description": "interface name to create channel on (e.g. can0)",
-                    "type": "String"
-                }
-            ],
-            "return": {
-                "description": "new RawChannel object"
-            },
-            "class": "RawChannel",
-            "module": "CAN"
-        },
-        {
-            "file": "src/raw.h",
-            "line": 72,
-            "description": "Add listener to receive certain notifications",
-            "itemtype": "method",
-            "name": "addListener",
-            "params": [
-                {
-                    "name": "event",
-                    "description": "onMessage to register for incoming messages",
-                    "type": "String"
-                },
-                {
-                    "name": "callback",
-                    "description": "JS callback object",
-                    "type": "Any"
-                },
-                {
-                    "name": "instance",
-                    "description": "Optional instance pointer to call callback",
-                    "type": "Any"
-                }
-            ],
-            "class": "RawChannel",
-            "module": "CAN"
-        },
-        {
-            "file": "src/raw.h",
-            "line": 81,
-            "description": "Start operation on this CAN channel",
-            "itemtype": "method",
-            "name": "start",
-            "class": "RawChannel",
-            "module": "CAN"
-        },
-        {
-            "file": "src/raw.h",
-            "line": 87,
-            "description": "Stop any operations on this CAN channel",
-            "itemtype": "method",
-            "name": "stop",
-            "class": "RawChannel",
-            "module": "CAN"
-        },
-        {
-            "file": "src/raw.h",
-            "line": 93,
-            "description": "Send a CAN message immediately",
-            "itemtype": "method",
-            "name": "send",
-            "params": [
-                {
-                    "name": "message",
-                    "description": "JSON object describing the CAN message, keys are id, length, data {Buffer}, ext or rtr",
-                    "type": "Object"
-                }
-            ],
-            "class": "RawChannel",
-            "module": "CAN"
-        },
-        {
-            "file": "src/raw.h",
-            "line": 100,
-            "description": "Set a list of active filters to be applied for incoming messages",
-            "itemtype": "method",
-            "name": "setRxFilters",
-            "params": [
-                {
-                    "name": "filters",
-                    "description": "single filter or array of filter e.g. { id: 0x1ff, mask: 0x1ff, invert: false}, result of (id & mask)",
-                    "type": "Object"
-                }
-            ],
-            "class": "RawChannel",
-            "module": "CAN"
-        },
-        {
-            "file": "can.js",
+            "file": "socketcan.js",
             "line": 28,
             "itemtype": "method",
             "name": "createRawChannel",
@@ -261,11 +128,10 @@
                 "description": "a new channel object or exception",
                 "type": "RawChannel"
             },
-            "class": "exports",
-            "module": "CAN"
+            "class": "exports"
         },
         {
-            "file": "can.js",
+            "file": "socketcan.js",
             "line": 53,
             "description": "Symbolic name",
             "itemtype": "attribute",
@@ -275,8 +141,22 @@
             "module": "Signals"
         },
         {
-            "file": "can.js",
-            "line": 71,
+            "file": "socketcan.js",
+            "line": 74,
+            "description": "Label set for defined states of the signal.",
+            "class": "Signal",
+            "module": "Signals"
+        },
+        {
+            "file": "socketcan.js",
+            "line": 79,
+            "description": "this will allow triggering on mux'ed message ids.",
+            "class": "Signal",
+            "module": "Signals"
+        },
+        {
+            "file": "socketcan.js",
+            "line": 84,
             "description": "Current value",
             "itemtype": "attribute",
             "name": "value",
@@ -285,8 +165,8 @@
             "module": "Signals"
         },
         {
-            "file": "can.js",
-            "line": 83,
+            "file": "socketcan.js",
+            "line": 97,
             "description": "Keep track of listeners who want to be notified if this signal changes",
             "itemtype": "method",
             "name": "onChange",
@@ -300,8 +180,8 @@
             "module": "Signals"
         },
         {
-            "file": "can.js",
-            "line": 93,
+            "file": "socketcan.js",
+            "line": 107,
             "description": "Set new value of this signal. Any local registered clients will\nreceive a notification. Please note, no CAN message is actually\nsend to the bus (@see DatabaseServer::send)",
             "itemtype": "method",
             "name": "update",
@@ -316,8 +196,8 @@
             "module": "Signals"
         },
         {
-            "file": "can.js",
-            "line": 121,
+            "file": "socketcan.js",
+            "line": 142,
             "description": "CAN identifier",
             "itemtype": "attribute",
             "name": "id",
@@ -326,8 +206,8 @@
             "module": "Signals"
         },
         {
-            "file": "can.js",
-            "line": 128,
+            "file": "socketcan.js",
+            "line": 149,
             "description": "Extended Frame Format used",
             "itemtype": "attribute",
             "name": "ext",
@@ -336,8 +216,8 @@
             "module": "Signals"
         },
         {
-            "file": "can.js",
-            "line": 135,
+            "file": "socketcan.js",
+            "line": 156,
             "description": "Symbolic name",
             "itemtype": "attribute",
             "name": "name",
@@ -346,18 +226,38 @@
             "module": "Signals"
         },
         {
-            "file": "can.js",
-            "line": 142,
+            "file": "socketcan.js",
+            "line": 163,
             "description": "Length in bytes of resulting CAN message",
             "itemtype": "attribute",
-            "name": "length",
+            "name": "len",
             "final": 1,
             "class": "Message",
             "module": "Signals"
         },
         {
-            "file": "can.js",
-            "line": 149,
+            "file": "socketcan.js",
+            "line": 171,
+            "description": "This is the time frame that the message gets generated",
+            "itemtype": "attribute",
+            "name": "interval",
+            "final": 1,
+            "class": "Message",
+            "module": "Signals"
+        },
+        {
+            "file": "socketcan.js",
+            "line": 179,
+            "description": "This is tells us the message is mutliplexed.",
+            "itemtype": "attribute",
+            "name": "muxed",
+            "final": 1,
+            "class": "Message",
+            "module": "Signals"
+        },
+        {
+            "file": "socketcan.js",
+            "line": 187,
             "description": "Named array of signals within this message. Accessible via index and name.",
             "itemtype": "attribute",
             "name": "signals",
@@ -367,8 +267,8 @@
             "module": "Signals"
         },
         {
-            "file": "can.js",
-            "line": 176,
+            "file": "socketcan.js",
+            "line": 218,
             "description": "Named array of known messages. Accessible via index and name.",
             "itemtype": "attribute",
             "name": "messages",
@@ -377,8 +277,8 @@
             "module": "Signals"
         },
         {
-            "file": "can.js",
-            "line": 225,
+            "file": "socketcan.js",
+            "line": 282,
             "description": "Construct a CAN message and encode all related signals according\nthe rules. Finally send the message to the bus.",
             "itemtype": "method",
             "name": "send",
@@ -392,8 +292,8 @@
             "module": "Signals"
         },
         {
-            "file": "can.js",
-            "line": 269,
+            "file": "socketcan.js",
+            "line": 346,
             "itemtype": "method",
             "name": "parseNetworkDescription",
             "params": [
@@ -412,8 +312,12 @@
     ],
     "warnings": [
         {
-            "message": "Missing item type\nCreate a new CAN channel object",
-            "line": " src/raw.h:64"
+            "message": "Missing item type\nLabel set for defined states of the signal.",
+            "line": " socketcan.js:74"
+        },
+        {
+            "message": "Missing item type\nthis will allow triggering on mux'ed message ids.",
+            "line": " socketcan.js:79"
         }
     ]
 }
