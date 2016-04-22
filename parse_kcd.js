@@ -140,6 +140,7 @@ exports.parseKcdFile = function(file) {
 						for (s in multiplex[mux]['MuxGroup'][mg]['Signal']) {
 							var signal = multiplex[mux]['MuxGroup'][mg]['Signal'][s]['$'];
 							var value = multiplex[mux]['MuxGroup'][mg]['Signal'][s]['Value'];
+							var labelset = multiplex[mux]['MuxGroup'][mg]['Signal'][s]['LabelSet'];
 							
 							var _s = {
 								name: signal.name,
@@ -158,13 +159,13 @@ exports.parseKcdFile = function(file) {
 								_s.maxValue = value[0]['$'].max ? value[0]['$'].max : undefined;
 								_s.type = value[0]['$'].type ? value[0]['$'].type : "unsigned";
 								_s.defaultValue = value[0]['$'].defaultValue ? parseFloat(value[0]['$'].defaultValue) : 0.0 ;
+							}
 							
-								// add label sets from the database. 
-								if( Array.isArray( value[0].LabelSet )){
-									var labels = value[0].LabelSet[0]['Label'];
-									for ( var i =0 ; i <  labels.length; i++  ){
-										_s.labels[labels[i]['$'].value] = labels[i]['$'].name ;
-									}
+							// add label sets from the database.
+							if( Array.isArray( labelset )){
+								var labels = labelset[0]['Label'];
+								for ( var i = 0 ; i < labels.length; i++ ){
+									_s.labels[labels[i]['$'].value] = labels[i]['$'].name ;
 								}
 							}
 							
@@ -185,6 +186,7 @@ exports.parseKcdFile = function(file) {
 				for (s in d['Bus'][b]['Message'][m]['Signal']) {
 					var signal = d['Bus'][b]['Message'][m]['Signal'][s]['$'];
 					var value = d['Bus'][b]['Message'][m]['Signal'][s]['Value'];
+					var labelset = d['Bus'][b]['Message'][m]['Signal'][s]['LabelSet'];
 					
 					var _s = {
 						name: signal.name,
@@ -202,13 +204,13 @@ exports.parseKcdFile = function(file) {
 						_s.maxValue = value[0]['$'].max ? value[0]['$'].max : undefined;
 						_s.type = value[0]['$'].type ? value[0]['$'].type : "unsigned";
 						_s.defaultValue = value[0]['$'].defaultValue ? parseFloat(value[0]['$'].defaultValue) : 0.0 ;
+					}
 					
-						// add label sets from the database. 
-						if( Array.isArray( value[0].LabelSet )){
-							var labels = value[0].LabelSet[0]['Label'];
-							for ( var i =0 ; i <  labels.length; i++  ){
-								_s.labels[labels[i]['$'].value] = labels[i]['$'].name ;
-							}
+					// add label sets from the database.
+					if( Array.isArray(labelset) ) {
+						var labels = labelset[0]['Label'];
+						for ( var i = 0 ; i < labels.length; i++ ){
+							_s.labels[labels[i]['$'].value] = labels[i]['$'].name;
 						}
 					}
 					var offset_num = parseInt(signal.offset) + _s.bitLength;
