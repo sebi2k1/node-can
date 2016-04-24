@@ -247,7 +247,6 @@ DatabaseService.prototype.onMessage = function (msg) {
 
 	if (!m)
 	{
-		console.log("Message ID " + msg.id + " not found");
 		return;
 	}
 
