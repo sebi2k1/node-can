@@ -87,9 +87,7 @@ function Signal(desc)
 	 * @attribute value
 	 * @final
 	 */
-	this.value = desc['defaultValue'];
-	if (!this.value)
-		this.value = 0;
+	this.value = null;
 
 	this.listeners = [];
 }
@@ -247,7 +245,6 @@ DatabaseService.prototype.onMessage = function (msg) {
 
 	if (!m)
 	{
-		console.log("Message ID " + msg.id + " not found");
 		return;
 	}
 
