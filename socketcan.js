@@ -87,9 +87,7 @@ function Signal(desc)
 	 * @attribute value
 	 * @final
 	 */
-	this.value = desc['defaultValue'];
-	if (!this.value)
-		this.value = 0;
+	this.value = null;
 
 	this.listeners = [];
 }
