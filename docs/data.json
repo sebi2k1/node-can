@@ -38,7 +38,7 @@
             "namespaces": {},
             "tag": "module",
             "file": "socketcan.js",
-            "line": 205,
+            "line": 203,
             "description": "The Signals modules provides an interface to access the values/signals\nencoded in CAN messages."
         }
     },
@@ -78,7 +78,7 @@
             "module": "Signals",
             "namespace": "",
             "file": "socketcan.js",
-            "line": 136,
+            "line": 134,
             "description": "Just a container to keep the Signals."
         },
         "DatabaseService": {
@@ -92,7 +92,7 @@
             "module": "Signals",
             "namespace": "",
             "file": "socketcan.js",
-            "line": 205,
+            "line": 203,
             "description": "A DatabaseService is usually generated once per bus to collect signals\ncoded in the CAN messages according a DB description.",
             "is_constructor": 1,
             "params": [
@@ -166,7 +166,7 @@
         },
         {
             "file": "socketcan.js",
-            "line": 97,
+            "line": 95,
             "description": "Keep track of listeners who want to be notified if this signal changes",
             "itemtype": "method",
             "name": "onChange",
@@ -181,7 +181,7 @@
         },
         {
             "file": "socketcan.js",
-            "line": 107,
+            "line": 105,
             "description": "Set new value of this signal. Any local registered clients will\nreceive a notification. Please note, no CAN message is actually\nsend to the bus (@see DatabaseServer::send)",
             "itemtype": "method",
             "name": "update",
@@ -197,7 +197,7 @@
         },
         {
             "file": "socketcan.js",
-            "line": 142,
+            "line": 140,
             "description": "CAN identifier",
             "itemtype": "attribute",
             "name": "id",
@@ -207,7 +207,7 @@
         },
         {
             "file": "socketcan.js",
-            "line": 149,
+            "line": 147,
             "description": "Extended Frame Format used",
             "itemtype": "attribute",
             "name": "ext",
@@ -217,7 +217,7 @@
         },
         {
             "file": "socketcan.js",
-            "line": 156,
+            "line": 154,
             "description": "Symbolic name",
             "itemtype": "attribute",
             "name": "name",
@@ -227,7 +227,7 @@
         },
         {
             "file": "socketcan.js",
-            "line": 163,
+            "line": 161,
             "description": "Length in bytes of resulting CAN message",
             "itemtype": "attribute",
             "name": "len",
@@ -237,7 +237,7 @@
         },
         {
             "file": "socketcan.js",
-            "line": 171,
+            "line": 169,
             "description": "This is the time frame that the message gets generated",
             "itemtype": "attribute",
             "name": "interval",
@@ -247,7 +247,7 @@
         },
         {
             "file": "socketcan.js",
-            "line": 179,
+            "line": 177,
             "description": "This is tells us the message is mutliplexed.",
             "itemtype": "attribute",
             "name": "muxed",
@@ -257,7 +257,7 @@
         },
         {
             "file": "socketcan.js",
-            "line": 187,
+            "line": 185,
             "description": "Named array of signals within this message. Accessible via index and name.",
             "itemtype": "attribute",
             "name": "signals",
@@ -268,7 +268,7 @@
         },
         {
             "file": "socketcan.js",
-            "line": 218,
+            "line": 216,
             "description": "Named array of known messages. Accessible via index and name.",
             "itemtype": "attribute",
             "name": "messages",
@@ -278,7 +278,7 @@
         },
         {
             "file": "socketcan.js",
-            "line": 282,
+            "line": 279,
             "description": "Construct a CAN message and encode all related signals according\nthe rules. Finally send the message to the bus.",
             "itemtype": "method",
             "name": "send",
@@ -293,7 +293,7 @@
         },
         {
             "file": "socketcan.js",
-            "line": 346,
+            "line": 343,
             "itemtype": "method",
             "name": "parseNetworkDescription",
             "params": [

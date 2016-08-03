@@ -155,7 +155,7 @@ function Signal(desc)
 	this.minValue = desc[&#x27;minValue&#x27;];
 	this.maxValue = desc[&#x27;maxValue&#x27;];
 
-	this.units = desc[&#x27;units&#x27;];
+	this.unit = desc[&#x27;unit&#x27;];
 
 	/**
 	 * Label set for defined states of the signal.
@@ -173,9 +173,7 @@ function Signal(desc)
 	 * @attribute value
 	 * @final
 	 */
-	this.value = desc[&#x27;defaultValue&#x27;];
-	if (!this.value)
-		this.value = 0;
+	this.value = null;
 
 	this.listeners = [];
 }
@@ -333,7 +331,6 @@ DatabaseService.prototype.onMessage = function (msg) {
 
 	if (!m)
 	{
-		console.log(&quot;Message ID &quot; + msg.id + &quot; not found&quot;);
 		return;
 	}
 

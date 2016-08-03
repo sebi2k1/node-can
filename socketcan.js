@@ -69,7 +69,7 @@ function Signal(desc)
 	this.minValue = desc['minValue'];
 	this.maxValue = desc['maxValue'];
 
-	this.units = desc['units'];
+	this.unit = desc['unit'];
 
 	/**
 	 * Label set for defined states of the signal.
