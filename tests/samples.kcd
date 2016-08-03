@@ -1,10 +1,15 @@
 <NetworkDefinition>
+	<Node id="12" name="BodyComputer"/>
+
 	<Bus name="Motor">
 		<Message id="0x37F" name="CruiseControlStatus">
 			<Signal name="SpeedKm" offset="0" length="8" endianess="little">
+				<Consumer>
+					<NodeRef id="12"/>
+				</Consumer>
 				<Value type="signed"/>
 			</Signal>
-		</Message>		
+		</Message>
 	</Bus>
 </NetworkDefinition>
 

@@ -80,7 +80,6 @@ exports.parseKcdFile = function(file) {
 			for (m in d['Bus'][b]['Message']) {
 				var message = d['Bus'][b]['Message'][m]['$'];
 				var producers = d['Bus'][b]['Message'][m]['Producer'];
-				var consumers = d['Bus'][b]['Message'][m]['Consumer'];
 
 				var multiplex = d['Bus'][b]['Message'][m]['Multiplex'];
 
@@ -102,23 +101,9 @@ exports.parseKcdFile = function(file) {
 						if (result.nodes[id])
 						{
 							if (result.nodes[id].buses[bus['name']] == undefined)
-								result.nodes[id].buses[bus['name']] = { produces: [], consume: []}
+								result.nodes[id].buses[bus['name']] = { produces: [], consumes: []}
 
-							result.nodes[id].buses[bus['name']].produces.push(_m);
-						}
-					}
-				}
-				// Add listeners / targets for the message.
-				for (c in consumers) {
-					for (n in consumers[c]['NodeRef']) {
-						var id = consumers[c]['NodeRef'][n]['$']['id'];
-
-						if (result.nodes[id])
-						{
-							if (result.nodes[id].buses[bus['name']] == undefined)
-								result.nodes[id].buses[bus['name']] = { produces: [], consume: []}
-
-							result.nodes[id].buses[bus['name']].consumes.push(_m);
+							result.nodes[id].buses[bus['name']].produces.push(_m.id);
 						}
 					}
 				}
@@ -162,10 +147,10 @@ exports.parseKcdFile = function(file) {
 							}
 
 							// add label sets from the database.
-							if( Array.isArray( labelset )){
+							if (Array.isArray(labelset)) {
 								var labels = labelset[0]['Label'];
-								for ( var i = 0 ; i < labels.length; i++ ){
-									_s.labels[labels[i]['$'].value] = labels[i]['$'].name ;
+								for ( var i = 0 ; i < labels.length; i++ ) {
+									_s.labels[labels[i]['$'].value] = labels[i]['$'].name;
 								}
 							}
 
@@ -177,7 +162,6 @@ exports.parseKcdFile = function(file) {
 							_s.bitOffset = parseInt(signal.offset);
 
 							_m.signals.push(_s);
-
 						}
 					}
 
@@ -187,6 +171,7 @@ exports.parseKcdFile = function(file) {
 					var signal = d['Bus'][b]['Message'][m]['Signal'][s]['$'];
 					var value = d['Bus'][b]['Message'][m]['Signal'][s]['Value'];
 					var labelset = d['Bus'][b]['Message'][m]['Signal'][s]['LabelSet'];
+					var consumers = d['Bus'][b]['Message'][m]['Signal'][s]['Consumer'];
 
 					var _s = {
 						name: signal.name,
@@ -207,12 +192,28 @@ exports.parseKcdFile = function(file) {
 					}
 
 					// add label sets from the database.
-					if( Array.isArray(labelset) ) {
+					if (Array.isArray(labelset)) {
 						var labels = labelset[0]['Label'];
 						for ( var i = 0 ; i < labels.length; i++ ){
 							_s.labels[labels[i]['$'].value] = labels[i]['$'].name;
 						}
 					}
+
+					// Add listeners / targets for the message.
+					for (c in consumers) {
+						for (n in consumers[c]['NodeRef']) {
+							var id = consumers[c]['NodeRef'][n]['$']['id'];
+
+							if (result.nodes[id])
+							{
+								if (result.nodes[id].buses[bus['name']] == undefined)
+									result.nodes[id].buses[bus['name']] = { produces: [], consumes: []}
+
+								result.nodes[id].buses[bus['name']].consumes.push({ id: _m.id, signal_name: _s.name });
+							}
+						}
+					}
+
 					var offset_num = parseInt(signal.offset) + _s.bitLength;
 
 					if (offset_num > maxOffset)
