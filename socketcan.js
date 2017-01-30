@@ -100,6 +100,18 @@ function Signal(desc)
  */
 Signal.prototype.onChange = function(listener) {
 	this.listeners.push(listener);
+	return listener;
+}
+
+/**
+ * Remove listener from signal onChange
+ * @method removeListener
+ * @param listener to be removed
+ * @for Signal
+ */
+Signal.prototype.removeListener = function(listener) {
+	var idx = this.listeners.indexOf(listener);
+	this.listeners.splice(idx, 1);
 }
 
 /**
