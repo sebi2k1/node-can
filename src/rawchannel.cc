@@ -137,10 +137,15 @@ private:
 
   ~RawChannel()
   {
-    for (size_t i = 0; i < m_Listeners.size(); i++)
-      delete m_Listeners.at(i);
+    for (size_t i = 0; i < m_OnMessageListeners.size(); i++)
+      delete m_OnMessageListeners.at(i);
 
-    m_Listeners.clear();
+    m_OnMessageListeners.clear();
+
+    for (size_t i = 0; i < m_OnChannelStoppedListeners.size(); i++)
+      delete m_OnChannelStoppedListeners.at(i);
+
+    m_OnChannelStoppedListeners.clear();
 
     if (m_SocketFd >= 0)
       close(m_SocketFd);
@@ -193,14 +198,30 @@ private:
     CHECK_CONDITION(info[0]->IsString(), "First argument must be a string");
     CHECK_CONDITION(info[1]->IsFunction(), "Second argument must be a function");
 
+    Nan::Utf8String event_utf8(info[0]->ToString());
+    std::string event = *event_utf8;
+
     struct listener *listener = new struct listener;
     listener->callback.Reset(info[1].As<v8::Function>());
 
     if (info.Length() >= 3 && info[2]->IsObject())
         listener->handle.Reset(info[2]->ToObject());
 
-    hw->m_Listeners.push_back(listener);
+    if (event.compare("onMessage") == 0)
+      hw->m_OnMessageListeners.push_back(listener);
+    else if (event.compare("onStopped") == 0)
+      hw->m_OnChannelStoppedListeners.push_back(listener);
+    else
+      goto on_error;
+
     info.GetReturnValue().Set(info.This());
+
+    return;
+
+on_error:
+    delete listener;
+
+    return Nan::ThrowError("Event not supported");
   }
 
   /**
@@ -217,6 +238,9 @@ private:
     // see: https://github.com/nodejs/nan/issues/151
     uv_async_init(uv_default_loop(), &hw->m_AsyncReceiverReady, (uv_async_cb) async_receiver_ready_cb);
     hw->m_AsyncReceiverReady.data = hw;
+
+    uv_async_init(uv_default_loop(), &hw->m_AsyncChannelStopped, (uv_async_cb) async_channel_stopped_cb);
+    hw->m_AsyncChannelStopped.data = hw;
 
     hw->m_ThreadStopRequested = false;
     pthread_create(&hw->m_Thread, NULL, c_thread_entry, hw);
@@ -240,6 +264,7 @@ private:
     pthread_join(hw->m_Thread, NULL);
     hw->m_Thread = 0;
     uv_close((uv_handle_t *)&hw->m_AsyncReceiverReady, NULL);
+    uv_close((uv_handle_t *)&hw->m_AsyncChannelStopped, NULL);
     hw->Unref();
     info.GetReturnValue().Set(info.This());
   }
@@ -357,13 +382,15 @@ private:
 
 private:
   uv_async_t m_AsyncReceiverReady;
+  uv_async_t m_AsyncChannelStopped;
 
   struct listener {
       Nan::Persistent<v8::Object> handle;
       Nan::Persistent<v8::Function> callback;
   };
 
-  std::vector<struct listener *> m_Listeners;
+  std::vector<struct listener *> m_OnMessageListeners;
+  std::vector<struct listener *> m_OnChannelStoppedListeners;
 
   pthread_t m_Thread;
   std::string m_Name;
@@ -381,7 +408,7 @@ private:
     struct pollfd pfd;
 
     pfd.fd = m_SocketFd;
-    pfd.events = POLLIN;
+    pfd.events = POLLIN|POLLHUP|POLLERR;
 
     while (!m_ThreadStopRequested)
     {
@@ -391,6 +418,12 @@ private:
       {
         if (likely(pfd.revents & POLLIN))
           uv_async_send(&m_AsyncReceiverReady);
+
+        if (pfd.revents & (POLLHUP|POLLERR))
+        {
+          uv_async_send(&m_AsyncChannelStopped);
+          break;
+        }
       }
       else
       {
@@ -427,6 +460,48 @@ private:
     assert(handle);
     assert(handle->data);
     reinterpret_cast<RawChannel*>(handle->data)->async_receiver_ready(status);
+  }
+
+  static void async_channel_stopped_cb(uv_async_t* handle, int status)
+  {
+    assert(handle);
+    assert(handle->data);
+    reinterpret_cast<RawChannel*>(handle->data)->async_channel_stopped(status);
+  }
+
+  void async_channel_stopped(int status)
+  {
+    Nan::HandleScope scope;
+
+    {
+      Nan::TryCatch try_catch;
+
+      for (size_t i = 0; i < m_OnChannelStoppedListeners.size(); i++)
+      {
+        struct listener *listener = m_OnChannelStoppedListeners.at(i);
+
+        Nan::Callback callback(Nan::New(listener->callback));
+        if (listener->handle.IsEmpty())
+          callback.Call(0, NULL);
+        else
+          callback.Call(Nan::New(listener->handle), 0, NULL);
+      }
+
+      if (unlikely(try_catch.HasCaught()))
+        Nan::FatalException(try_catch);
+    }
+
+    if (m_Thread)
+    {
+      m_ThreadStopRequested = true;
+      pthread_join(m_Thread, NULL);
+      m_Thread = 0;
+
+      uv_close((uv_handle_t *)&m_AsyncReceiverReady, NULL);
+      uv_close((uv_handle_t *)&m_AsyncChannelStopped, NULL);
+    }
+
+    Unref();
   }
 
   void async_receiver_ready(int status)
@@ -478,9 +553,9 @@ private:
 
       Nan::Set(obj, data_symbol, Nan::CopyBuffer((char *)frame.data, frame.can_dlc & 0xf).ToLocalChecked());
 
-      for (size_t i = 0; i < m_Listeners.size(); i++)
+      for (size_t i = 0; i < m_OnMessageListeners.size(); i++)
       {
-        struct listener *listener = m_Listeners.at(i);
+        struct listener *listener = m_OnMessageListeners.at(i);
          Nan::Callback callback(Nan::New(listener->callback));
         if (listener->handle.IsEmpty())
           callback.Call(1, argv);
