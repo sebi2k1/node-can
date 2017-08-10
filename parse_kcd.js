@@ -149,8 +149,10 @@ exports.parseKcdFile = function(file) {
 							// add label sets from the database.
 							if (Array.isArray(labelset)) {
 								var labels = labelset[0]['Label'];
-								for ( var i = 0 ; i < labels.length; i++ ) {
-									_s.labels[labels[i]['$'].value] = labels[i]['$'].name;
+								if (labels != undefined) {
+									for ( var i = 0 ; i < labels.length; i++ ) {
+										_s.labels[labels[i]['$'].value] = labels[i]['$'].name;
+									}
 								}
 							}
 
@@ -194,8 +196,10 @@ exports.parseKcdFile = function(file) {
 					// add label sets from the database.
 					if (Array.isArray(labelset)) {
 						var labels = labelset[0]['Label'];
-						for ( var i = 0 ; i < labels.length; i++ ){
-							_s.labels[labels[i]['$'].value] = labels[i]['$'].name;
+						if (labels != undefined) {
+							for ( var i = 0 ; i < labels.length; i++ ) {
+								_s.labels[labels[i]['$'].value] = labels[i]['$'].name;
+							}
 						}
 					}
 
