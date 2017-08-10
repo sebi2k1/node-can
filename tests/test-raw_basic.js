@@ -16,14 +16,10 @@ exports['channel_error'] = function(test) {
 	var channel = can.createRawChannel("vcan1");
 
 	channel.addListener("onStopped", function() {
-		console.log("Channel stopped");
-
 		test.done();
 	});
 
 	channel.start();
-
-	console.log("Destroy channel now");
 }
 
 // Send 100 messages from c2 to c1
