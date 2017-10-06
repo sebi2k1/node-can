@@ -47,6 +47,39 @@ exports['receive_signals'] = function(test) {
 	});
 }
 
+exports['receive_update_signals'] = function(test) {
+	// Parse database
+	var network = can.parseNetworkDescription("./tests/samples.kcd");
+	var channel = can.createRawChannel("vcan0");
+	var gen_channel = can.createRawChannel("vcan0");
+	var db      = new can.DatabaseService(channel, network.buses["Motor"]);
+
+	channel.start();
+	gen_channel.start();
+
+	var cm = { data: new Buffer([ 0 ]) };
+	cm.id = db.messages["CruiseControlStatus"].id;
+
+	var next_speed = 255;
+	var expected = -1; /* 255 = 0xFF = -1 in 2's complement */
+	var counter = 0;
+	cm.data[0] = next_speed;
+	gen_channel.send(cm);
+
+	db.messages["CruiseControlStatus"].signals["SpeedKm"].onUpdate(function(s) {
+		test.equal(s.value, expected);
+		if (counter >= 1) {
+			channel.stop();
+			gen_channel.stop();
+			test.done();
+		}
+		else {
+			counter++;
+			gen_channel.send(cm);
+		}
+	});
+}
+
 exports['transmit_receive_signals'] = function(test) {
 	// Parse database
 	var network = can.parseNetworkDescription("./tests/samples.kcd");
@@ -78,4 +111,3 @@ exports['transmit_receive_signals'] = function(test) {
 		}
 	});
 }
-
