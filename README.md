@@ -40,6 +40,11 @@ db.messages["CruiseControlStatus"].signals["SpeedKm"].onChange(function(s) {
    console.log("SpeedKm " + s.value);
 });
 
+// Register a listener to get any value updates
+db.messages["Emission"].signals["Enginespeed"].onUpdate(function(s) {
+   console.log("Enginespeed " + s.value);
+});
+
 // Update tank temperature
 db.messages["TankController"].signals["TankTemperature"].update(80);
 
