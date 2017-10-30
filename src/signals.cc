@@ -51,7 +51,7 @@ static u_int64_t _getvalue(u_int8_t * data,
         d = be64toh(*((uint64_t *)&data[0]));
     }
 
-    uint64_t m = (1 << length) - 1;
+    uint64_t m = (1LLU << length) - 1;
     size_t shift;
     if (byteOrder == ENDIANESS_INTEL) {
         shift = offset;
@@ -76,7 +76,7 @@ static u_int64_t _getvalue(u_int8_t * data,
             val |= ((data[bitNr >> 3] >> (7-(bitNr & 0x07))) & 1) << i;
         }
     }
-    
+
     if (val != o) {
         fprintf(stderr, "getvalue: got %lu, expected %lu\n", val, o);
     }
@@ -122,7 +122,7 @@ NAN_METHOD(DecodeSignal)
     uint64_t val = _getvalue(data, offset, bitLength, endianess);
 
     // Value shall be interpreted as signed (2's complement)
-    if (isSigned && val & (1 << (bitLength - 1))) {
+    if (isSigned && val & (1LLU << (bitLength - 1))) {
         int32_t tmp = -1 * (~((UINT64_MAX << bitLength) | val) + 1);
         retval = Nan::New(tmp);
     } else {
