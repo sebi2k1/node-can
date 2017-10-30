@@ -89,7 +89,8 @@ function Signal(desc)
 	 */
 	this.value = null;
 
-	this.listeners = [];
+	this.changelisteners = [];
+	this.updateListeners = [];
 }
 
 /**
@@ -99,19 +100,32 @@ function Signal(desc)
  * @for Signal
  */
 Signal.prototype.onChange = function(listener) {
-	this.listeners.push(listener);
+	this.changelisteners.push(listener);
 	return listener;
 }
 
 /**
- * Remove listener from signal onChange
+ * Keep track of listeners who want to be notified if this signal updates
+ * @method onUpdate
+ * @param listener JS callback to get notification
+ * @for Signal
+ */
+Signal.prototype.onUpdate = function(listener) {
+	this.updateListeners.push(listener);
+	return listener;
+}
+
+/**
+ * Remove listener from signal onChange and/or onUpdate
  * @method removeListener
  * @param listener to be removed
  * @for Signal
  */
 Signal.prototype.removeListener = function(listener) {
-	var idx = this.listeners.indexOf(listener);
-	this.listeners.splice(idx, 1);
+	var idx = this.changelisteners.indexOf(listener);
+	if (idx >= 0) this.changelisteners.splice(idx, 1);
+	idx = this.updateListeners.indexOf(listener);
+	if (idx >= 0) this.updateListeners.splice(idx, 1);
 }
 
 /**
@@ -123,22 +137,27 @@ Signal.prototype.removeListener = function(listener) {
  * @for Signal
  */
 Signal.prototype.update = function(newValue) {
-	// Nothing changed
-	if (this.value == newValue) {
-		return;
-	} else if (newValue > this.maxValue) {
+
+	if (newValue > this.maxValue) {
 		console.error("ERROR : " + this.name + " value= " + newValue
 				+ " is outof bounds  > " + this.maxValue);
 	} else if (newValue < this.minValue) {
 		console.error("ERROR : " + this.name + " value= " + newValue
 				+ " is outof bounds  < " + this.minValue);
 	}
-
+	var changed = this.value !== newValue;
 	this.value = newValue;
+	
+	// Update all updateListeners, that the signal updated
+	for (f in this.updateListeners) {
+		this.updateListeners[f](this);
+	}
+	// Nothing changed
+	if ( ! changed) return;
 
-	// Update all listeners, that the signal changed
-	for (f in this.listeners) {
-		this.listeners[f](this);
+	// Update all changelisteners, that the signal changed
+	for (f in this.changelisteners) {
+		this.changelisteners[f](this);
 	}
 }
 
@@ -360,4 +379,3 @@ DatabaseService.prototype.send = function (msg_name) {
  */
 exports.parseNetworkDescription = kcd.parseKcdFile;
 exports.DatabaseService = DatabaseService;
-
