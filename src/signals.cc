@@ -108,8 +108,9 @@ NAN_METHOD(DecodeSignal)
     CHECK_CONDITION(info[3]->IsBoolean(), "Invalid endianess");
     CHECK_CONDITION(info[4]->IsBoolean(), "Invalid signed flag");
 
-    offset    = info[1]->ToUint32()->Uint32Value();
-    bitLength = info[2]->ToUint32()->Uint32Value();
+    v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
+    offset    = info[1]->ToUint32(context).ToLocalChecked()->Value();
+    bitLength = info[2]->ToUint32(context).ToLocalChecked()->Value();
     endianess = info[3]->IsTrue() ? ENDIANESS_INTEL : ENDIANESS_MOTOROLA;
     isSigned  = info[4]->IsTrue() ? true : false;
 
@@ -209,13 +210,14 @@ NAN_METHOD(EncodeSignal)
     CHECK_CONDITION(info[4]->IsBoolean(), "Invalid sign flag");
     CHECK_CONDITION(info[5]->IsNumber() || info[5]->IsBoolean(), "Invalid value");
 
-    offset = info[1]->ToUint32()->Uint32Value();
-    bitLength = info[2]->ToUint32()->Uint32Value();
+    Local<Context> context = info.GetIsolate()->GetCurrentContext();
+    offset = info[1]->ToUint32(context).ToLocalChecked()->Value();
+    bitLength = info[2]->ToUint32(context).ToLocalChecked()->Value();
     endianess = info[3]->IsTrue() ? ENDIANESS_INTEL : ENDIANESS_MOTOROLA;
     sign = info[4]->IsTrue() ? true : false;
 
     if (sign) {
-        int32_t in_val = info[5]->ToNumber()->Int32Value();
+        int32_t in_val = info[5]->ToNumber(context).ToLocalChecked()->ToInt32(context).ToLocalChecked()->Value();
 
         if (in_val < 0) {
             in_val *= -1; // Make it a positive number
@@ -225,7 +227,7 @@ NAN_METHOD(EncodeSignal)
         }
     }
 
-    raw_value = info[5]->ToNumber()->Uint32Value();
+    raw_value = info[5]->ToNumber(context).ToLocalChecked()->ToUint32(context).ToLocalChecked()->Value();
 
     size_t maxBytes = std::min<u_int32_t>(Buffer::Length(jsData), sizeof(data));
 

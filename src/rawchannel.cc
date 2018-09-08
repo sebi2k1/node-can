@@ -282,10 +282,11 @@ on_error:
     CHECK_CONDITION(info[0]->IsObject(), "First argument must be an Object");
     CHECK_CONDITION(hw->IsValid(), "Invalid channel!");
     struct can_frame frame;
-    v8::Local<v8::Object> obj =  info[0]->ToObject();
+    v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
+    v8::Local<v8::Object> obj =  info[0]->ToObject(context).ToLocalChecked();
 
     // TODO: Check for correct structure of message object
-    frame.can_id = obj->Get(id_symbol)->Uint32Value();
+    frame.can_id = obj->Get(context, id_symbol).ToLocalChecked()->ToUint32(context).ToLocalChecked()->Value();
 
     if (obj->Get(ext_symbol)->IsTrue())
       frame.can_id |= CAN_EFF_FLAG;
@@ -331,6 +332,8 @@ on_error:
     struct can_filter *rfilter;
     int numfilter = 0;
 
+    v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
+
     if (info[0]->IsArray())
     {
       v8::Local<v8::Array> list = v8::Local<v8::Array>::Cast(info[0]);
@@ -344,7 +347,7 @@ on_error:
 
       for (idx = 0; idx < list->Length(); idx++)
       {
-        if (ObjectToFilter(list->Get(idx)->ToObject(), &rfilter[numfilter]))
+        if (ObjectToFilter(context, list->Get(idx)->ToObject(), &rfilter[numfilter]))
           numfilter++;
       }
     }
@@ -354,7 +357,7 @@ on_error:
 
       CHECK_CONDITION(rfilter, "Couldn't allocate memory for filter list");
 
-      if (ObjectToFilter(info[0]->ToObject(), &rfilter[numfilter]))
+      if (ObjectToFilter(context, info[0]->ToObject(), &rfilter[numfilter]))
         numfilter++;
     }
 
@@ -434,7 +437,7 @@ private:
 
   bool IsValid() { return m_SocketFd >= 0; }
 
-  static bool ObjectToFilter(v8::Handle<v8::Object> object, struct can_filter *rfilter)
+  static bool ObjectToFilter(v8::Handle<v8::Context> context, v8::Handle<v8::Object> object, struct can_filter *rfilter)
   {
     Nan::HandleScope scope;
 
@@ -444,8 +447,8 @@ private:
     if (!id->IsUint32() || !mask->IsUint32())
       return false;
 
-    rfilter->can_id = id->Uint32Value();
-    rfilter->can_mask = mask->Uint32Value();
+    rfilter->can_id = id->ToUint32(context).ToLocalChecked()->Value();
+    rfilter->can_mask = mask->ToUint32(context).ToLocalChecked()->Value();
 
     if (object->Get(invert_symbol)->IsTrue())
       rfilter->can_id |= CAN_INV_FILTER;
