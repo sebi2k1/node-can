@@ -327,7 +327,7 @@ DatabaseService.prototype.send = function (msg_name) {
 		id: m.id,
 		ext: m.ext,
 		rtr: false,
-		data : (m.len > 0 && m.len < 8) ? new Buffer(m.len) : new Buffer(8)
+		data : (m.len > 0 && m.len < 8) ? Buffer.alloc(m.len) : Buffer.alloc(8)
 	};
 
 	canmsg.data.fill(0); // should be 0xFF for j1939 message def.
