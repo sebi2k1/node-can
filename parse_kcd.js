@@ -52,7 +52,7 @@ exports.parseKcdFile = function(file) {
 					'System'     : node['J1939System'],
 					'Manufacture': node['J1939ManufacturerCode'],
 					getName   : function(){
-						var name = new Buffer(8);
+						var name = Buffer.alloc(8);
 						name[7] = ((this.AAC & 0x1) << 7) | ((this.Industry & 0x7) << 4) | (this.Vehicle & 0xF);
 						name[6] = (this.System) << 1  & 0xFE;
 						name[5] = this.Function & 0xFF;

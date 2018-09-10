@@ -12,7 +12,7 @@ exports['receive_signals'] = function(test) {
 	channel.start();
 	gen_channel.start();
 
-	var cm = { data: new Buffer([ 0 ]) };
+	var cm = { data: Buffer.from([ 0 ]) };
 	cm.id = db.messages["CruiseControlStatus"].id;
 
 	var next_speed = 255;
@@ -57,7 +57,7 @@ exports['receive_update_signals'] = function(test) {
 	channel.start();
 	gen_channel.start();
 
-	var cm = { data: new Buffer([ 0 ]) };
+	var cm = { data: Buffer.from([ 0 ]) };
 	cm.id = db.messages["CruiseControlStatus"].id;
 
 	var next_speed = 255;
