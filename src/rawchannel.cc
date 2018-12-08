@@ -127,6 +127,11 @@ private:
       if (bind(m_SocketFd, (struct sockaddr *)&m_SocketAddr, sizeof(m_SocketAddr)) < 0)
         goto on_error;
 
+      pthread_mutex_init(&m_ReadPendingMtx, NULL);
+      pthread_cond_init(&m_ReadPendingCond, NULL);
+
+      m_ReadPending = false;
+
       return;
 
     on_error:
@@ -151,7 +156,7 @@ private:
       close(m_SocketFd);
 
     if (m_Thread)
-      pthread_join(m_Thread, NULL);
+      stopThread();
   }
 
   /**
@@ -259,10 +264,11 @@ on_error:
   static NAN_METHOD(Stop)
   {
     RawChannel* hw = ObjectWrap::Unwrap<RawChannel>(info.Holder());
+
     CHECK_CONDITION(hw->m_Thread, "Channel not started");
-    hw->m_ThreadStopRequested = true;
-    pthread_join(hw->m_Thread, NULL);
-    hw->m_Thread = 0;
+
+    hw->stopThread();
+
     uv_close((uv_handle_t *)&hw->m_AsyncReceiverReady, NULL);
     uv_close((uv_handle_t *)&hw->m_AsyncChannelStopped, NULL);
     hw->Unref();
@@ -343,8 +349,6 @@ on_error:
 
       CHECK_CONDITION(rfilter, "Couldn't allocate memory for filter list");
 
-      printf("Provided filters: %d\n", list->Length());
-
       for (idx = 0; idx < list->Length(); idx++)
       {
         if (ObjectToFilter(context, list->Get(idx)->ToObject(), &rfilter[numfilter]))
@@ -383,6 +387,23 @@ on_error:
     info.GetReturnValue().Set(info.This());
   }
 
+  void stopThread()
+  {
+    if (m_Thread)
+    {
+      pthread_mutex_lock(&m_ReadPendingMtx);
+
+      m_ReadPending         = false;
+      m_ThreadStopRequested = true;
+
+      pthread_cond_signal(&m_ReadPendingCond);
+      pthread_mutex_unlock(&m_ReadPendingMtx);
+
+      pthread_join(m_Thread, NULL);
+      m_Thread = 0;
+    }
+  }
+
 private:
   uv_async_t m_AsyncReceiverReady;
   uv_async_t m_AsyncChannelStopped;
@@ -397,6 +418,10 @@ private:
 
   pthread_t m_Thread;
   std::string m_Name;
+
+  pthread_mutex_t m_ReadPendingMtx;
+  pthread_cond_t  m_ReadPendingCond;
+  bool            m_ReadPending;
 
   int m_SocketFd;
   struct sockaddr_can m_SocketAddr;
@@ -417,10 +442,27 @@ private:
     {
       pfd.revents = 0;
 
+      pthread_mutex_lock(&m_ReadPendingMtx);
+
+      while (unlikely(m_ReadPending && !m_ThreadStopRequested))
+      {
+        // Read pending and not yet consumed -> wait
+        pthread_cond_wait(&m_ReadPendingCond, &m_ReadPendingMtx);
+      }
+
+      pthread_mutex_unlock(&m_ReadPendingMtx);
+
       if (likely(poll(&pfd, 1, 100) >= 0))
       {
         if (likely(pfd.revents & POLLIN))
+        {
+          pthread_mutex_lock(&m_ReadPendingMtx);
+
           uv_async_send(&m_AsyncReceiverReady);
+          m_ReadPending = true;
+
+          pthread_mutex_unlock(&m_ReadPendingMtx);
+        }
 
         if (pfd.revents & (POLLHUP|POLLERR))
         {
@@ -496,9 +538,7 @@ private:
 
     if (m_Thread)
     {
-      m_ThreadStopRequested = true;
-      pthread_join(m_Thread, NULL);
-      m_Thread = 0;
+      stopThread();
 
       uv_close((uv_handle_t *)&m_AsyncReceiverReady, NULL);
       uv_close((uv_handle_t *)&m_AsyncChannelStopped, NULL);
@@ -572,6 +612,13 @@ private:
       if (++framesProcessed > MAX_FRAMES_PER_ASYNC_EVENT)
         break;
     }
+
+    pthread_mutex_lock(&m_ReadPendingMtx);
+
+    m_ReadPending = false;
+
+    pthread_cond_signal(&m_ReadPendingCond);
+    pthread_mutex_unlock(&m_ReadPendingMtx);
   }
 };
 
