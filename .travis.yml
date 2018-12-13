@@ -1,7 +1,8 @@
 language: node_js
-dist: trusty
+dist: xenial
 install:
   - sudo apt-get install -y can-utils
+  - sudo apt-get install -y nodejs-dev
 before_script:
   - npm install -g nodeunit
   - npm install
