@@ -1,10 +1,10 @@
 language: node_js
-dist: xenial
+dist: trusty
 install:
   - sudo apt-get install -y can-utils
 before_script:
-  - sh prepare_test_env.sh
   - npm install -g nodeunit
   - npm install
+  - sh prepare_test_env.sh
 script:
   - NODE_PATH=. nodeunit tests
