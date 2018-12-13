@@ -8,6 +8,5 @@ install:
 before_script:
   - npm install -g nodeunit
   - npm install
-  - sh prepare_test_env.sh
 script:
-  - NODE_PATH=. nodeunit tests
+  - NODE_PATH=. nodeunit tests/test-parsing.js tests/test-signal_conversion.js
