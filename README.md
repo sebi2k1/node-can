@@ -33,25 +33,28 @@ var fs = require('fs');
 // Parse database
 var network = can.parseNetworkDescription("samples/can_definition_sample.kcd");
 var channel = can.createRawChannel("vcan0");
-var db      = new can.DatabaseService(channel, network.buses["Motor"]);
+var db_motor = new can.DatabaseService(channel, network.buses["Motor"]);
+var db_instr = new can.DatabaseService(channel, network.buses["Instrumentation"]);
 
 channel.start();
 
 // Register a listener to get any value changes
-db.messages["CruiseControlStatus"].signals["SpeedKm"].onChange(function(s) {
+db_motor.messages["CruiseControlStatus"].signals["SpeedKm"].onChange(function(s) {
    console.log("SpeedKm " + s.value);
 });
 
 // Register a listener to get any value updates
-db.messages["Emission"].signals["Enginespeed"].onUpdate(function(s) {
+db_motor.messages["Emission"].signals["Enginespeed"].onUpdate(function(s) {
    console.log("Enginespeed " + s.value);
 });
 
 // Update tank temperature
-db.messages["TankController"].signals["TankTemperature"].update(80);
+db_instr.messages["TankController"].signals["TankTemperature"].update(80);
 
 // Trigger sending this message
-db.send("TankController");
+db_instr.send("TankController");
+
+channel.stop()
 ```
 
 Install
