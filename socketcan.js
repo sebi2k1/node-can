@@ -366,8 +366,14 @@ DatabaseService.prototype.send = function (msg_name) {
 			return;
 		}
 
+    var word1 = val & 0xFFFFFFFF
+    var word2 = 0
+    // shift doesn't work above 32 bit, only do this if required to save cycles
+    if (val > 0xFFFFFFFF)
+      word2 = (val / Math.pow(2, 32))
+
 		_signals.encode_signal(canmsg.data, s.bitOffset, s.bitLength,
-      s.endianess == 'little', s.type == 'signed', (val & 0xFFFFFFFF), (val >> 32) );
+      s.endianess == 'little', s.type == 'signed', word1, word2 );
 	}
 
 	this.channel.send(canmsg);

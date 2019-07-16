@@ -229,18 +229,6 @@ NAN_METHOD(EncodeSignal)
     offset = info[1]->ToUint32(context).ToLocalChecked()->Value();
     bitLength = info[2]->ToUint32(context).ToLocalChecked()->Value();
     endianess = info[3]->IsTrue() ? ENDIANESS_INTEL : ENDIANESS_MOTOROLA;
-    sign = info[4]->IsTrue() ? true : false;
-
-    /* if (sign) { */
-    /*     int32_t in_val = info[5]->ToNumber(context).ToLocalChecked()->ToInt32(context).ToLocalChecked()->Value(); */
-
-    /*     if (in_val < 0) { */
-    /*         in_val *= -1; // Make it a positive number */
-
-    /*         raw_value = (~in_val) + 1; */
-    /*         raw_value &= ~(UINT64_MAX << bitLength); // mask valid bits */
-    /*     } */
-    /* } */ 
 
     raw_value = info[5]->ToNumber(context).ToLocalChecked()->ToUint32(context).ToLocalChecked()->Value();
     if (info[6]->IsNumber() || info[6]->IsBoolean()) {
