@@ -290,12 +290,14 @@ DatabaseService.prototype.onMessage = function (msg) {
 			continue;
 
 		// if this is a mux signal and the muxor isnt in my list...
-		if (m.muxed && s.muxGroup && s.muxGroup.indexOf(b1mux) == -1) {
+		if (m.muxed && s.muxGroup && s.muxGroup.indexOf(b1mux[0]) == -1) {
 			continue;
 		}
 
-		var val = _signals.decode_signal(msg.data, s.bitOffset, s.bitLength,
+		var ret = _signals.decode_signal(msg.data, s.bitOffset, s.bitLength,
 				s.endianess == 'little', s.type == 'signed');
+
+    var val = ret[0] + (ret[1] << 32)
 
 		if (s.slope)
 			val *= s.slope;
@@ -365,7 +367,7 @@ DatabaseService.prototype.send = function (msg_name) {
 		}
 
 		_signals.encode_signal(canmsg.data, s.bitOffset, s.bitLength,
-				s.endianess == 'little', s.type == 'signed', val);
+      s.endianess == 'little', s.type == 'signed', (val & 0xFFFFFFFF), (val >> 32) );
 	}
 
 	this.channel.send(canmsg);
