@@ -130,15 +130,25 @@ exports['big_endian_signed_encode'] = function(test) {
 	signals.encode_signal(data, 16, 8, false, true, -128);
 	test.deepEqual(data, Buffer.from([0xFF, 0xFE, 0x80, 0, 0, 0, 0, 0]));
 
+	signals.encode_signal(data, 16, 16, false, true, -32767);
+	test.deepEqual(data, Buffer.from([0xFF, 0xFE, 0x80, 0x01, 0, 0, 0, 0]));
+
+	// signals.encode_signal(data, 0, 64, false, true, -9223372036);
+	// test.deepEqual(data, Buffer.from([0xFF, 0xFF, 0xFF, 0xFD, 0xDA, 0x3E, 0x82, 0xFB]));
+
 	test.done();
 }
 
 exports['big_endian_signed_decode'] = function(test) {
-	data = Buffer.from([0xFF, 0xFE, 0x80 ]);
+	data = Buffer.from([0xFF, 0xFE, 0x80, 0x01]);
 
 	test.deepEqual(signals.decode_signal(data, 0, 8, false, true), [-1, 0]);
 	test.deepEqual(signals.decode_signal(data, 0, 16, false, true), [-2, 0]);
 	test.deepEqual(signals.decode_signal(data, 16, 8, false, true), [-128, 0]);
+	test.deepEqual(signals.decode_signal(data, 16, 16, false, true), [-32767, 0]);
+
+	// data = Buffer.from([0xFF, 0xFF, 0xFF, 0xFD, 0xDA, 0x3E, 0x82, 0xFB]);
+	// test.deepEqual(signals.decode_signal(data, 0, 64, false, true), [-9223372037, 0]);
 
 	test.done();
 }

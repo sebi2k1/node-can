@@ -105,7 +105,7 @@ NAN_METHOD(DecodeSignal)
     CHECK_CONDITION(info.Length() == 5, "Too few arguments");
     CHECK_CONDITION(info[0]->IsObject(), "Invalid argument");
 
-    Local<Object> jsData = info[0]->ToObject();
+    Local<Object> jsData = Nan::To<Object>(info[0]).ToLocalChecked();
 
     CHECK_CONDITION(Buffer::HasInstance(jsData), "Invalid argument");
     CHECK_CONDITION(info[1]->IsUint32(), "Invalid offset");
@@ -216,7 +216,7 @@ NAN_METHOD(EncodeSignal)
     CHECK_CONDITION(info.Length() >= 6, "Too few arguments");
     CHECK_CONDITION(info[0]->IsObject(), "Invalid argument");
 
-    Local<Object> jsData = info[0]->ToObject();
+    Local<Object> jsData = Nan::To<Object>(info[0]).ToLocalChecked();
 
     CHECK_CONDITION(Buffer::HasInstance(jsData), "Invalid argument");
     CHECK_CONDITION(info[1]->IsUint32(), "Invalid offset");
