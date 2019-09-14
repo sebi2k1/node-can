@@ -13,10 +13,12 @@
   },
   "scripts": {
     "configure": "node-gyp configure",
-    "build": "node-gyp build"
+    "build": "node-gyp build",
+    "test": "NODE_PATH=. nodeunit tests"
   },
   "devDependencies": {
-    "node-gyp": ">=1.0.0"
+    "node-gyp": ">=1.0.0",
+    "nodeunit": "^0.11.3"
   },
   "dependencies": {
     "nan": "*",

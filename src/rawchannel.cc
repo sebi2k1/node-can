@@ -42,6 +42,8 @@
 #include <vector>
 #include <string>
 
+using namespace v8;
+
 #define CHECK_CONDITION(expr, str) if(!(expr)) return Nan::ThrowError(str);
 
 #define MAX_FRAMES_PER_ASYNC_EVENT 100
@@ -95,8 +97,8 @@ public:
     Nan::SetPrototypeMethod(tpl, "disableLoopback", DisableLoopback);
 
     // constructor
-    constructor.Reset(tpl->GetFunction());
-    exports->Set(Nan::New("RawChannel").ToLocalChecked(), tpl->GetFunction());
+    constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
+    exports->Set(Nan::New("RawChannel").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
   }
 
 private:
@@ -173,7 +175,7 @@ private:
     CHECK_CONDITION(info.Length() >= 1, "Too few arguments");
     CHECK_CONDITION(info[0]->IsString(), "First argument must be a string");
 
-    Nan::Utf8String ascii(info[0]->ToString());
+    Nan::Utf8String ascii( Nan::To<String>(info[0]).ToLocalChecked() );
 
     if (info.Length() >= 2)
     {
@@ -203,14 +205,15 @@ private:
     CHECK_CONDITION(info[0]->IsString(), "First argument must be a string");
     CHECK_CONDITION(info[1]->IsFunction(), "Second argument must be a function");
 
-    Nan::Utf8String event_utf8(info[0]->ToString());
+    Nan::Utf8String event_utf8(Nan::To<String>(info[0]).ToLocalChecked());
     std::string event = *event_utf8;
 
     struct listener *listener = new struct listener;
     listener->callback.Reset(info[1].As<v8::Function>());
+    v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
 
     if (info.Length() >= 3 && info[2]->IsObject())
-        listener->handle.Reset(info[2]->ToObject());
+        listener->handle.Reset(Nan::To<Object>(info[2]).ToLocalChecked());
 
     if (event.compare("onMessage") == 0)
       hw->m_OnMessageListeners.push_back(listener);
@@ -289,7 +292,7 @@ on_error:
     CHECK_CONDITION(hw->IsValid(), "Invalid channel!");
     struct can_frame frame;
     v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
-    v8::Local<v8::Object> obj =  info[0]->ToObject(context).ToLocalChecked();
+    v8::Local<v8::Object> obj = Nan::To<Object>(info[0]).ToLocalChecked();
 
     // TODO: Check for correct structure of message object
     frame.can_id = obj->Get(context, id_symbol).ToLocalChecked()->ToUint32(context).ToLocalChecked()->Value();
@@ -305,8 +308,8 @@ on_error:
     CHECK_CONDITION(node::Buffer::HasInstance(dataArg), "Data field must be a Buffer");
 
     // Get frame data
-    frame.can_dlc = node::Buffer::Length(dataArg->ToObject());
-    memcpy(frame.data, node::Buffer::Data(dataArg->ToObject()), frame.can_dlc);
+    frame.can_dlc = node::Buffer::Length(Nan::To<Object>(dataArg).ToLocalChecked());
+    memcpy(frame.data, node::Buffer::Data(Nan::To<Object>(dataArg).ToLocalChecked()), frame.can_dlc);
 
     { // set time stamp when sending data
       struct timeval now;
@@ -351,7 +354,7 @@ on_error:
 
       for (idx = 0; idx < list->Length(); idx++)
       {
-        if (ObjectToFilter(context, list->Get(idx)->ToObject(), &rfilter[numfilter]))
+        if (ObjectToFilter(context, Nan::To<Object>(list->Get(idx)).ToLocalChecked(), &rfilter[numfilter]))
           numfilter++;
       }
     }
@@ -361,7 +364,7 @@ on_error:
 
       CHECK_CONDITION(rfilter, "Couldn't allocate memory for filter list");
 
-      if (ObjectToFilter(context, info[0]->ToObject(), &rfilter[numfilter]))
+      if (ObjectToFilter(context, Nan::To<Object>(info[0]).ToLocalChecked(), &rfilter[numfilter]))
         numfilter++;
     }
 
@@ -479,12 +482,12 @@ private:
 
   bool IsValid() { return m_SocketFd >= 0; }
 
-  static bool ObjectToFilter(v8::Handle<v8::Context> context, v8::Handle<v8::Object> object, struct can_filter *rfilter)
+  static bool ObjectToFilter(v8::Local<v8::Context> context, v8::Local<v8::Object> object, struct can_filter *rfilter)
   {
     Nan::HandleScope scope;
 
-    v8::Handle<v8::Value> id = object->Get(id_symbol);
-    v8::Handle<v8::Value> mask = object->Get(mask_symbol);
+    v8::Local<v8::Value> id = object->Get(id_symbol);
+    v8::Local<v8::Value> mask = object->Get(mask_symbol);
 
     if (!id->IsUint32() || !mask->IsUint32())
       return false;
