@@ -31,7 +31,10 @@ var buffer = require('buffer');
  * @return {RawChannel} a new channel object or exception
  * @for exports
  */
-exports.createRawChannel = function(channel, timestamps) { return new can.RawChannel(channel, timestamps); }
+exports.createRawChannel = function(channel, timestamps, protocol)
+{
+	return new can.RawChannel(channel, timestamps, protocol);
+}
 
 //-----------------------------------------------------------------------------
 /**
