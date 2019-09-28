@@ -102,9 +102,9 @@ public:
   }
 
 private:
-  explicit RawChannel(const char *name, bool timestamps = false) : m_Thread(0), m_Name(name), m_SocketFd(-1)
+  explicit RawChannel(const char *name, bool timestamps = false, int protocol = CAN_RAW) : m_Thread(0), m_Name(name), m_SocketFd(-1)
   {
-    m_SocketFd = socket(PF_CAN, SOCK_RAW, CAN_RAW);
+    m_SocketFd = socket(PF_CAN, SOCK_RAW, protocol);
     m_ThreadStopRequested = false;
     m_TimestampsSupported = timestamps;
 
