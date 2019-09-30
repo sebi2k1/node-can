@@ -170,6 +170,7 @@ private:
   static NAN_METHOD(New)
   {
     bool timestamps = false;
+    int protocol = CAN_RAW;
 
     CHECK_CONDITION(info.IsConstructCall(), "Must be called with new");
     CHECK_CONDITION(info.Length() >= 1, "Too few arguments");
@@ -183,7 +184,6 @@ private:
         timestamps = info[1]->IsTrue();
     }
 
-    int protocol = CAN_RAW;
     if (info.Length() >= 3)
     {
       if (info[2]->IsInt32())
