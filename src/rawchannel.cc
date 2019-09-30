@@ -183,7 +183,14 @@ private:
         timestamps = info[1]->IsTrue();
     }
 
-    RawChannel* hw = new RawChannel(*ascii, timestamps);
+    int protocol = CAN_RAW;
+    if (info.Length() >= 3)
+    {
+      if (info[2]->IsInt32())
+        protocol = info[2]->IntegerValue();
+    }
+    
+    RawChannel* hw = new RawChannel(*ascii, timestamps, protocol);
     hw->Wrap(info.This());
 
     CHECK_CONDITION(hw->IsValid(), "Error while creating channel");
