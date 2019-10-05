@@ -102,9 +102,9 @@ public:
   }
 
 private:
-  explicit RawChannel(const char *name, bool timestamps = false) : m_Thread(0), m_Name(name), m_SocketFd(-1)
+  explicit RawChannel(const char *name, bool timestamps = false, int protocol = CAN_RAW) : m_Thread(0), m_Name(name), m_SocketFd(-1)
   {
-    m_SocketFd = socket(PF_CAN, SOCK_RAW, CAN_RAW);
+    m_SocketFd = socket(PF_CAN, SOCK_RAW, protocol);
     m_ThreadStopRequested = false;
     m_TimestampsSupported = timestamps;
 
@@ -170,6 +170,7 @@ private:
   static NAN_METHOD(New)
   {
     bool timestamps = false;
+    int protocol = CAN_RAW;
 
     CHECK_CONDITION(info.IsConstructCall(), "Must be called with new");
     CHECK_CONDITION(info.Length() >= 1, "Too few arguments");
@@ -183,7 +184,13 @@ private:
         timestamps = info[1]->IsTrue();
     }
 
-    RawChannel* hw = new RawChannel(*ascii, timestamps);
+    if (info.Length() >= 3)
+    {
+      if (info[2]->IsInt32())
+        protocol = info[2]->IntegerValue();
+    }
+    
+    RawChannel* hw = new RawChannel(*ascii, timestamps, protocol);
     hw->Wrap(info.This());
 
     CHECK_CONDITION(hw->IsValid(), "Error while creating channel");
