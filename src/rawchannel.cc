@@ -188,7 +188,7 @@ private:
     if (info.Length() >= 3)
     {
       if (info[2]->IsInt32())
-        protocol = info[2]->IntegerValue();
+        protocol = info[2]->IntegerValue(Nan::GetCurrentContext()).FromJust();
     }
     
     RawChannel* hw = new RawChannel(*ascii, timestamps, protocol);
