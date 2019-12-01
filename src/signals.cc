@@ -209,7 +209,6 @@ NAN_METHOD(EncodeSignal)
 {
     u_int32_t offset, bitLength;
     ENDIANESS endianess;
-    bool sign = false;
     u_int8_t data[8];
     u_int64_t raw_value;
 
