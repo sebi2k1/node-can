@@ -12,6 +12,18 @@ exports['channel_creation'] = function(test) {
 	test.done();
 }
 
+exports['channel_creation_w_options'] = function(test) {
+	var channel = can.createRawChannel("vcan0", { timestamps: true, non_block_send: true });
+
+	test.throws(function() { channel.stop(); });
+
+	var channel = can.createRawChannel("vcan0");
+
+	test.throws(function() { channel.stop(); });
+
+	test.done();
+}
+
 exports['channel_error'] = function(test) {
 	var channel = can.createRawChannel("vcan1");
 
@@ -24,8 +36,8 @@ exports['channel_error'] = function(test) {
 
 // Send 100 messages from c2 to c1
 exports['rxtx_test'] = function(test) {
-	var c1 = can.createRawChannel("vcan0");
-	var c2 = can.createRawChannel("vcan0");
+	var c1 = can.createRawChannelWithOptions("vcan0", { timestamps: true });
+	var c2 = can.createRawChannelWithOptions("vcan0", { non_block_send: true });
 
 	c1.start();
 	c2.start();
@@ -36,14 +48,17 @@ exports['rxtx_test'] = function(test) {
 
 	c1.addListener("onMessage", function(msg) {
 		test.equal(msg.data[0], rx_count);
+		test.ok(msg.ts_sec !== undefined)
 		rx_count++;
 	});
 
+	// Generate 100 messages
 	for (var i = 0; i < 100; i++) {
 		canmsg.data[0] = i;
 		c2.send(canmsg);
 	}
 
+	// Check after 100ms if all 100 messages have been received
 	setTimeout(function() {
 		test.equals(rx_count, i);
 		c1.stop();

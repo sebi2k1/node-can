@@ -103,11 +103,13 @@ public:
   }
 
 private:
-  explicit RawChannel(const char *name, bool timestamps = false, int protocol = CAN_RAW) : m_Thread(0), m_Name(name), m_SocketFd(-1)
+  explicit RawChannel(const char *name, bool timestamps, int protocol, bool non_block_send)
+    : m_Thread(0), m_Name(name), m_SocketFd(-1)
   {
     m_SocketFd = socket(PF_CAN, SOCK_RAW, protocol);
     m_ThreadStopRequested = false;
     m_TimestampsSupported = timestamps;
+    m_NonBlockingSend = non_block_send;
 
     if (m_SocketFd > 0)
     {
@@ -170,8 +172,9 @@ private:
    */
   static NAN_METHOD(New)
   {
-    bool timestamps = false;
-    int protocol = CAN_RAW;
+    bool timestamps     = false;
+    int protocol        = CAN_RAW;
+    bool non_block_send = false;
 
     CHECK_CONDITION(info.IsConstructCall(), "Must be called with new");
     CHECK_CONDITION(info.Length() >= 1, "Too few arguments");
@@ -191,7 +194,13 @@ private:
         protocol = info[2]->IntegerValue(Nan::GetCurrentContext()).FromJust();
     }
     
-    RawChannel* hw = new RawChannel(*ascii, timestamps, protocol);
+    if (info.Length() >= 4)
+    {
+      if (info[3]->IsBoolean()) 
+        non_block_send = info[3]->IsTrue();
+    }
+  
+    RawChannel* hw = new RawChannel(*ascii, timestamps, protocol, non_block_send);
     hw->Wrap(info.This());
 
     CHECK_CONDITION(hw->IsValid(), "Error while creating channel");
@@ -326,6 +335,11 @@ on_error:
       }
     }
 
+    int flags = 0;
+
+    if (hw->m_NonBlockingSend)
+      flags = MSG_DONTWAIT;
+
     int i = send(hw->m_SocketFd, &frame, sizeof(struct can_frame), 0);
 
     info.GetReturnValue().Set(i);
@@ -438,6 +452,7 @@ private:
 
   bool m_ThreadStopRequested;
   bool m_TimestampsSupported;
+  bool m_NonBlockingSend;
 
   static void * c_thread_entry(void *_this) { assert(_this); reinterpret_cast<RawChannel *>(_this)->ThreadEntry(); return NULL; }
 
