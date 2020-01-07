@@ -38,6 +38,7 @@
 
 #include <linux/can.h>
 #include <linux/can/raw.h>
+#include <linux/sockios.h>
 
 #include <vector>
 #include <string>
@@ -187,7 +188,7 @@ private:
     if (info.Length() >= 3)
     {
       if (info[2]->IsInt32())
-        protocol = info[2]->IntegerValue();
+        protocol = info[2]->IntegerValue(Nan::GetCurrentContext()).FromJust();
     }
     
     RawChannel* hw = new RawChannel(*ascii, timestamps, protocol);
@@ -217,7 +218,6 @@ private:
 
     struct listener *listener = new struct listener;
     listener->callback.Reset(info[1].As<v8::Function>());
-    v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
 
     if (info.Length() >= 3 && info[2]->IsObject())
         listener->handle.Reset(Nan::To<Object>(info[2]).ToLocalChecked());
@@ -510,21 +510,21 @@ private:
     return true;
   }
 
-  static void async_receiver_ready_cb(uv_async_t* handle, int status)
+  static void async_receiver_ready_cb(uv_async_t* handle)
   {
     assert(handle);
     assert(handle->data);
-    reinterpret_cast<RawChannel*>(handle->data)->async_receiver_ready(status);
+    reinterpret_cast<RawChannel*>(handle->data)->async_receiver_ready();
   }
 
-  static void async_channel_stopped_cb(uv_async_t* handle, int status)
+  static void async_channel_stopped_cb(uv_async_t* handle)
   {
     assert(handle);
     assert(handle->data);
-    reinterpret_cast<RawChannel*>(handle->data)->async_channel_stopped(status);
+    reinterpret_cast<RawChannel*>(handle->data)->async_channel_stopped();
   }
 
-  void async_channel_stopped(int status)
+  void async_channel_stopped()
   {
     Nan::HandleScope scope;
 
@@ -557,7 +557,7 @@ private:
     Unref();
   }
 
-  void async_receiver_ready(int status)
+  void async_receiver_ready()
   {
     Nan::HandleScope scope;
 
@@ -632,11 +632,12 @@ private:
   }
 };
 
+//-----------------------------------------------------------------------------------------
 Nan::Persistent<v8::Function> RawChannel::constructor;
 
-void InitAll(v8::Local<v8::Object> exports)
+NAN_MODULE_INIT(InitAll)
 {
-  RawChannel::Init(exports);
+  RawChannel::Init(target);
 }
 
 NODE_MODULE(can, InitAll)
