@@ -28,12 +28,32 @@ var buffer = require('buffer');
 /**
  * @method createRawChannel
  * @param channel {string} Channel name (e.g. vcan0)
+ * @param timestamps {bool} Whether or not timestamps shall be generated when reading a message
+ * @param protocol {integer} optionally provide another default protocol value (default is CAN_RAW)
  * @return {RawChannel} a new channel object or exception
  * @for exports
  */
 exports.createRawChannel = function(channel, timestamps, protocol)
 {
-	return new can.RawChannel(channel, timestamps, protocol);
+	return new can.RawChannel(channel, timestamps, protocol, false);
+}
+
+/**
+ * @method createRawChannel
+ * @param channel {string} Channel name (e.g. vcan0)
+ * @param options {dict} list of options (timestamps, protocol, non_block_send)
+ * @return {RawChannel} a new channel object or exception
+ * @for exports
+ */
+exports.createRawChannelWithOptions = function(channel, options)
+{
+	if (options === undefined) options = {}
+
+	if (options.timestamps === undefined) options.timestamps = false;
+	if (options.protocol === undefined) options.protocol = 1; /* CAN RAW */
+	if (options.non_block_send === undefined) options.non_block_send = false;
+
+	return new can.RawChannel(channel, options.timestamps, options.protocol, options.non_block_send);
 }
 
 //-----------------------------------------------------------------------------
