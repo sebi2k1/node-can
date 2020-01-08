@@ -292,7 +292,11 @@ on_error:
   }
 
   /**
-   * Send a CAN message immediately
+   * Send a CAN message immediately.
+   *
+   * PLEASE NOTE: By default, this function may block if the Tx buffer is not available. Please use
+   * createRawChannelWithOptions({non_block_send: false}) to get non-blocking sending activated.
+   *
    * @method send
    * @param message {Object} JSON object describing the CAN message, keys are id, length, data {Buffer}, ext or rtr
    */
