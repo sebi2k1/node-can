@@ -34,6 +34,24 @@ exports['channel_error'] = function(test) {
 	channel.start();
 }
 
+exports['channel_stopped'] = function(test) {
+	var channel = can.createRawChannel("vcan0");
+	var stop_called = false;
+
+	channel.addListener("onStopped", function() {
+		stop_called = true
+	});
+	
+	channel.start();
+	
+	setTimeout(function() { channel.stop(); }, 100);
+
+	setTimeout(function() {
+		test.ok(stop_called)
+		test.done()
+	}, 100);
+}
+
 // Send 100 messages from c2 to c1
 exports['rxtx_test'] = function(test) {
 	var c1 = can.createRawChannelWithOptions("vcan0", { timestamps: true });

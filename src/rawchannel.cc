@@ -286,11 +286,8 @@ on_error:
 
     CHECK_CONDITION(hw->m_Thread, "Channel not started");
 
-    hw->stopThread();
+    hw->async_channel_stopped();
 
-    uv_close((uv_handle_t *)&hw->m_AsyncReceiverReady, NULL);
-    uv_close((uv_handle_t *)&hw->m_AsyncChannelStopped, NULL);
-    hw->Unref();
     info.GetReturnValue().Set(info.This());
   }
 
