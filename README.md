@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.com/sebi2k1/node-can.svg?branch=master)](https://travis-ci.com/sebi2k1/node-can)
+[![Dependency Status](https://david-dm.org/sebi2k1/node-can.svg)](https://david-dm.org/sebi2k1/node-can)
 
 node-can
 ========
