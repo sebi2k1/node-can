@@ -80,7 +80,7 @@ private:
   static Nan::Persistent<v8::Function> constructor;
 
 public:
-  static void Init(v8::Local<v8::Object> exports)
+  static NAN_MODULE_INIT(Init)
   {
     Nan::HandleScope scope;
 
@@ -99,7 +99,7 @@ public:
 
     // constructor
     constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
-    exports->Set(Nan::New("RawChannel").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
+    Nan::Set(target, Nan::New("RawChannel").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
   }
 
 private:
@@ -193,13 +193,13 @@ private:
       if (info[2]->IsInt32())
         protocol = info[2]->IntegerValue(Nan::GetCurrentContext()).FromJust();
     }
-    
+
     if (info.Length() >= 4)
     {
-      if (info[3]->IsBoolean()) 
+      if (info[3]->IsBoolean())
         non_block_send = info[3]->IsTrue();
     }
-  
+
     RawChannel* hw = new RawChannel(*ascii, timestamps, protocol, non_block_send);
     hw->Wrap(info.This());
 
@@ -314,13 +314,13 @@ on_error:
     // TODO: Check for correct structure of message object
     frame.can_id = obj->Get(context, id_symbol).ToLocalChecked()->ToUint32(context).ToLocalChecked()->Value();
 
-    if (obj->Get(ext_symbol)->IsTrue())
+    if (obj->Get(context, ext_symbol).ToLocalChecked()->IsTrue())
       frame.can_id |= CAN_EFF_FLAG;
 
-    if (obj->Get(rtr_symbol)->IsTrue())
+    if (obj->Get(context, rtr_symbol).ToLocalChecked()->IsTrue())
       frame.can_id |= CAN_RTR_FLAG;
 
-    v8::Local<v8::Value> dataArg = obj->Get(data_symbol);
+    v8::Local<v8::Value> dataArg = obj->Get(context, data_symbol).ToLocalChecked();
 
     CHECK_CONDITION(node::Buffer::HasInstance(dataArg), "Data field must be a Buffer");
 
@@ -376,7 +376,7 @@ on_error:
 
       for (idx = 0; idx < list->Length(); idx++)
       {
-        if (ObjectToFilter(context, Nan::To<Object>(list->Get(idx)).ToLocalChecked(), &rfilter[numfilter]))
+        if (ObjectToFilter(context, Nan::To<Object>(list->Get(context, idx).ToLocalChecked()).ToLocalChecked(), &rfilter[numfilter]))
           numfilter++;
       }
     }
@@ -509,8 +509,8 @@ private:
   {
     Nan::HandleScope scope;
 
-    v8::Local<v8::Value> id = object->Get(id_symbol);
-    v8::Local<v8::Value> mask = object->Get(mask_symbol);
+    v8::Local<v8::Value> id = object->Get(context, id_symbol).ToLocalChecked();
+    v8::Local<v8::Value> mask = object->Get(context, mask_symbol).ToLocalChecked();
 
     if (!id->IsUint32() || !mask->IsUint32())
       return false;
@@ -518,7 +518,7 @@ private:
     rfilter->can_id = id->ToUint32(context).ToLocalChecked()->Value();
     rfilter->can_mask = mask->ToUint32(context).ToLocalChecked()->Value();
 
-    if (object->Get(invert_symbol)->IsTrue())
+    if (object->Get(context, invert_symbol).ToLocalChecked()->IsTrue())
       rfilter->can_id |= CAN_INV_FILTER;
 
     rfilter->can_mask &= ~CAN_ERR_FLAG;
@@ -651,9 +651,4 @@ private:
 //-----------------------------------------------------------------------------------------
 Nan::Persistent<v8::Function> RawChannel::constructor;
 
-NAN_MODULE_INIT(InitAll)
-{
-  RawChannel::Init(target);
-}
-
-NODE_MODULE(can, InitAll)
+NODE_MODULE(can, RawChannel::Init)
