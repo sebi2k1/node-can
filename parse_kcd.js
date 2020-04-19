@@ -118,8 +118,8 @@ exports.parseKcdFile = function(file) {
 				var maxOffset = 0;
 
 				// look for multiplexed messages
-				for ( mux in multiplex ){
-					for (mg in multiplex[mux]['MuxGroup'] ){
+				for (mux in multiplex){
+					for (mg in multiplex[mux]['MuxGroup']){
 						var muxmsg = multiplex[mux]['MuxGroup'][mg]['$'];
 
 						for (s in multiplex[mux]['MuxGroup'][mg]['Signal']) {
@@ -182,6 +182,7 @@ exports.parseKcdFile = function(file) {
 						spn : signal.spn,
 						labels : {},
 					};
+
 					// add Values from the database
 					if (Array.isArray(value)) {
 						_s.slope = value[0]['$'].slope ? parseFloat(value[0]['$'].slope) : 1.0;
