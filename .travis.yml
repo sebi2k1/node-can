@@ -10,8 +10,8 @@ install:
   - sudo apt-get install -y nodejs-dev
   - sudo apt-get install linux-modules-extra-$(uname -r)
 before_script:
-  - npm install -g nodeunit
+  - npm install -g mocha
   - npm install
 script:
   - sh prepare_test_env.sh
-  - NODE_PATH=. nodeunit tests
+  - NODE_PATH=. mocha
