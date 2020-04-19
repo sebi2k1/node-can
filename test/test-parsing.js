@@ -1,6 +1,6 @@
 var assert = require('assert')
 
-var can = require('socketcan');
+var can = require('../socketcan');
 
 describe('Parsing KCD', function() {
     it('should parse consumer-definition incl. references', function(done) {

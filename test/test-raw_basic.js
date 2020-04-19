@@ -1,6 +1,6 @@
 var assert = require('assert')
 
-var can = require('socketcan');
+var can = require('../socketcan');
 var buffer = require('buffer');
 
 describe('RawChannel', function() {
