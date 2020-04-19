@@ -14,13 +14,15 @@
   "scripts": {
     "configure": "node-gyp configure",
     "build": "node-gyp build",
-    "test": "NODE_PATH=. nodeunit tests"
+    "test": "NODE_PATH=. mocha"
   },
   "devDependencies": {
+    "mocha": "^7.1.1",
     "node-gyp": ">=1.0.0"
   },
   "dependencies": {
     "nan": "*",
+    "nyc": "^15.0.1",
     "xml2js": ">=0.2.0"
   },
   "main": "socketcan.js",
