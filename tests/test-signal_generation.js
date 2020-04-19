@@ -111,3 +111,35 @@ exports['transmit_receive_signals'] = function(test) {
 		}
 	});
 }
+
+exports['transmit_receive_muxed_signals'] = function(test) {
+	// Parse database
+	var network = can.parseNetworkDescription("./tests/samples.kcd");
+
+	var channel = can.createRawChannel("vcan0");
+	var gen_channel = can.createRawChannel("vcan0");
+
+	var rx_db = new can.DatabaseService(channel, network.buses["OBD2"]);
+	var tx_db = new can.DatabaseService(gen_channel, network.buses["OBD2"]);
+
+	channel.start();
+	gen_channel.start();
+
+	var next_speed = -128;
+
+	tx_db.messages["OBD2"].signals["S1_PID_00_PIDsSupported_01_20"].update(next_speed);
+	tx_db.send("OBD2");
+
+	rx_db.messages["CruiseControlStatus"].signals["S1_PID_00_PIDsSupported_01_20"].onChange(function(s) {
+		test.equal(s.value, next_speed++);
+
+		if (next_speed > 127) {
+			channel.stop();
+			gen_channel.stop();
+			test.done();
+		} else {
+			tx_db.messages["OBD2"].signals["S1_PID_00_PIDsSupported_01_20"].update(next_speed);
+			tx_db.send("OBD2");
+		}
+	});
+}
