@@ -1,0 +1,16 @@
+<NetworkDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://kayak.2codeornot2code.org/1.0" xsi:schemaLocation="Definition.xsd">
+<Document name="Some Document Name">some text</Document>
+<Bus name="OBD2">
+<Message id="0x7E8" name="OBD2" length="8">
+<Notes>OBD2 DBC developed by canmatrix &amp; CSS Electronics - for questions contact us at www.csselectronics.com</Notes>
+<Multiplex name="service" offset="8" length="4">
+<MuxGroup count="0">
+<Signal name="S1_PID_00_PIDsSupported_01_20" offset="24" length="32" endianess="big">
+<Notes>PIDs supported [01 - 20] - Bit encoded [A7..D0] == [PID $01..PID $20]. See OBD-II PIDs on Wikipedia</Notes>
+<Value max="4294967295"/>
+</Signal>
+</MuxGroup>
+</Multiplex>
+</Message>
+</Bus>
+</NetworkDefinition>
