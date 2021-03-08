@@ -410,10 +410,12 @@ on_error:
     RawChannel* hw = ObjectWrap::Unwrap<RawChannel>(info.Holder());
 
     CHECK_CONDITION(info.Length() > 0, "Too few arguments");
-    CHECK_CONDITION(info[0]->IsNumber(), "Invalid argument");
+    CHECK_CONDITION(info[0]->IsUint32(), "Invalid argument");
     CHECK_CONDITION(hw->IsValid(), "Channel not ready");
 
-    can_err_mask_t err_mask = (can_err_mask_t) info[0]->Uint32Value();
+    v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
+
+    can_err_mask_t err_mask = (can_err_mask_t) info[0]->ToUint32(context).ToLocalChecked()->Value();
 
     setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &err_mask, sizeof(err_mask));
     info.GetReturnValue().Set(info.This());
