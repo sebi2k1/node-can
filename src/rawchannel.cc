@@ -90,11 +90,12 @@ public:
     tpl->InstanceTemplate()->SetInternalFieldCount(1);        // for storing (this)
 
     // Prototype
-    Nan::SetPrototypeMethod(tpl, "addListener",    AddListener);
-    Nan::SetPrototypeMethod(tpl, "start",          Start);
-    Nan::SetPrototypeMethod(tpl, "stop",           Stop);
-    Nan::SetPrototypeMethod(tpl, "send",           Send);
-    Nan::SetPrototypeMethod(tpl, "setRxFilters",   SetRxFilters);
+    Nan::SetPrototypeMethod(tpl, "addListener",     AddListener);
+    Nan::SetPrototypeMethod(tpl, "start",           Start);
+    Nan::SetPrototypeMethod(tpl, "stop",            Stop);
+    Nan::SetPrototypeMethod(tpl, "send",            Send);
+    Nan::SetPrototypeMethod(tpl, "setRxFilters",    SetRxFilters);
+    Nan::SetPrototypeMethod(tpl, "setErrorFilters", SetErrorFilters);
     Nan::SetPrototypeMethod(tpl, "disableLoopback", DisableLoopback);
 
     // constructor
@@ -396,6 +397,25 @@ on_error:
     if (rfilter)
       free(rfilter);
 
+    info.GetReturnValue().Set(info.This());
+  }
+
+  /**
+   * Set a list of active filters to be applied for errors
+   * @method setErrorFilters
+   * @param errorMask {Uint32} CAN error mask
+   */
+  static NAN_METHOD(SetErrorFilters)
+  {
+    RawChannel* hw = ObjectWrap::Unwrap<RawChannel>(info.Holder());
+
+    CHECK_CONDITION(info.Length() > 0, "Too few arguments");
+    CHECK_CONDITION(info[0]->IsNumber(), "Invalid argument");
+    CHECK_CONDITION(hw->IsValid(), "Channel not ready");
+
+    can_err_mask_t err_mask = (can_err_mask_t) info[0]->Uint32Value();
+
+    setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &err_mask, sizeof(err_mask));
     info.GetReturnValue().Set(info.This());
   }
 
