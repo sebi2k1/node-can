@@ -247,6 +247,13 @@ function Message(desc)
     this.mux = desc.mux;
 
     /**
+     * Named information to inform that the frame is CAN_FD format .
+     * @attribute Boolean
+     * @final
+     */
+     this.canfd = desc.canfd;           //GT modif
+
+    /**
      * Named array of signals within this message. Accessible via index and name.
      * @attribute {Signal} signals
      * @final
@@ -366,7 +373,8 @@ DatabaseService.prototype.send = function (msg_name) {
         id: m.id,
         ext: m.ext,
         rtr: false,
-        data : (m.len > 0 && m.len < 8) ? Buffer.alloc(m.len) : Buffer.alloc(8)
+        //data : (m.len > 0 && m.len < 8) ? Buffer.alloc(m.len) : Buffer.alloc(8)
+        data : (m.len > 0 && m.len < 64) ? Buffer.alloc(m.len) : Buffer.alloc(64)         // gt modif for CANFD
     };
 
     canmsg.data.fill(0); // should be 0xFF for j1939 message def.
@@ -415,6 +423,7 @@ DatabaseService.prototype.send = function (msg_name) {
 
     this.channel.send(canmsg);
 }
+
 
 /**
  * @method parseNetworkDescription
