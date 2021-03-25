@@ -100,7 +100,8 @@ NAN_METHOD(DecodeSignal)
     u_int32_t offset, bitLength;
     ENDIANESS endianess;
     bool isSigned = false;
-    u_int8_t data[8];
+    //u_int8_t data[8];
+    u_int8_t data[64];           // GT modif : CANFD size of bufer = 64
 
     CHECK_CONDITION(info.Length() == 5, "Too few arguments");
     CHECK_CONDITION(info[0]->IsObject(), "Invalid argument");
@@ -209,7 +210,8 @@ NAN_METHOD(EncodeSignal)
 {
     u_int32_t offset, bitLength;
     ENDIANESS endianess;
-    u_int8_t data[8];
+    //u_int8_t data[8];
+    u_int8_t data[64];           // GT modif : CANFD size of bufer = 64
     u_int64_t raw_value;
 
     CHECK_CONDITION(info.Length() >= 6, "Too few arguments");

@@ -19,6 +19,10 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
+ 
+ /*
+  * 
+  */
 
 #include <nan.h>
 #include <node_buffer.h>
@@ -63,11 +67,13 @@ using namespace v8;
 #define rtr_symbol      SYMBOL("rtr")
 #define err_symbol      SYMBOL("err")
 #define data_symbol     SYMBOL("data")
+#define canfd_symbol    SYMBOL("canfd")        
 
 /**
- * Basic CAN access
+ * Basic CAN & CAN_FD access
  * @module CAN
  */
+static int Flag_CANFD_Used=0;         // GT modif : Add a global Flag to treat the information according the interface capability, see Init function
 
 //-----------------------------------------------------------------------------------------
 /**
@@ -94,6 +100,7 @@ public:
     Nan::SetPrototypeMethod(tpl, "start",           Start);
     Nan::SetPrototypeMethod(tpl, "stop",            Stop);
     Nan::SetPrototypeMethod(tpl, "send",            Send);
+    Nan::SetPrototypeMethod(tpl, "sendFD",          SendFD);                  // GT MODIF : add function for SEND_CANFD frame
     Nan::SetPrototypeMethod(tpl, "setRxFilters",    SetRxFilters);
     Nan::SetPrototypeMethod(tpl, "setErrorFilters", SetErrorFilters);
     Nan::SetPrototypeMethod(tpl, "disableLoopback", DisableLoopback);
@@ -107,7 +114,8 @@ private:
   explicit RawChannel(const char *name, bool timestamps, int protocol, bool non_block_send)
     : m_Thread(0), m_Name(name), m_SocketFd(-1)
   {
-    m_SocketFd = socket(PF_CAN, SOCK_RAW, protocol);
+    static const int canfd_on = 1;
+    m_SocketFd = socket(PF_CAN, SOCK_RAW, protocol);    // OPen the socket
     m_ThreadStopRequested = false;
     m_TimestampsSupported = timestamps;
     m_NonBlockingSend = non_block_send;
@@ -122,9 +130,18 @@ private:
       if (ioctl(m_SocketFd, SIOCGIFINDEX, &ifr) != 0)
         goto on_error;
 
+      // Configuration updated to use the CAN_FD 
       err_mask = CAN_ERR_MASK;
-      if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &err_mask, sizeof(err_mask)) != 0)
-        goto on_error;
+      Flag_CANFD_Used = 1 ;                                                                               // GT MODIF : try to use CAN_FD first
+      if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_FD_FRAMES,&canfd_on, sizeof(canfd_on)) != 0)        // GT MODIF : configuration for CAN_FD
+      {
+        Flag_CANFD_Used = 0 ;                                                                               // GT MODIF : CAN_FD not usable
+        if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &err_mask, sizeof(err_mask)) != 0)          // GT MODIF : configuration for CAN_HS
+          {
+            goto on_error;
+          }
+      }
+
 
       memset(&m_SocketAddr, 0, sizeof(m_SocketAddr));
       m_SocketAddr.can_family = PF_CAN;
@@ -303,6 +320,7 @@ on_error:
    */
   static NAN_METHOD(Send)
   {
+    int requiered_mtu = 1;
     RawChannel* hw = ObjectWrap::Unwrap<RawChannel>(info.Holder());
 
     CHECK_CONDITION(info.Length() >= 1, "Invalid arguments");
@@ -312,41 +330,103 @@ on_error:
     v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
     v8::Local<v8::Object> obj = Nan::To<Object>(info[0]).ToLocalChecked();
 
+    // CAN HS FRAME
+    // ---------------
     // TODO: Check for correct structure of message object
-    frame.can_id = obj->Get(context, id_symbol).ToLocalChecked()->ToUint32(context).ToLocalChecked()->Value();
 
-    if (obj->Get(context, ext_symbol).ToLocalChecked()->IsTrue())
-      frame.can_id |= CAN_EFF_FLAG;
+      frame.can_id = obj->Get(context, id_symbol).ToLocalChecked()->ToUint32(context).ToLocalChecked()->Value();
+      if (obj->Get(context, ext_symbol).ToLocalChecked()->IsTrue())
+        frame.can_id |= CAN_EFF_FLAG;
 
-    if (obj->Get(context, rtr_symbol).ToLocalChecked()->IsTrue())
-      frame.can_id |= CAN_RTR_FLAG;
+      if (obj->Get(context, rtr_symbol).ToLocalChecked()->IsTrue())
+        frame.can_id |= CAN_RTR_FLAG;
 
-    v8::Local<v8::Value> dataArg = obj->Get(context, data_symbol).ToLocalChecked();
+      v8::Local<v8::Value> dataArg = obj->Get(context, data_symbol).ToLocalChecked();
 
-    CHECK_CONDITION(node::Buffer::HasInstance(dataArg), "Data field must be a Buffer");
+      CHECK_CONDITION(node::Buffer::HasInstance(dataArg), "Data field must be a Buffer");
 
-    // Get frame data
-    frame.can_dlc = node::Buffer::Length(Nan::To<Object>(dataArg).ToLocalChecked());
-    memcpy(frame.data, node::Buffer::Data(Nan::To<Object>(dataArg).ToLocalChecked()), frame.can_dlc);
+      // Get frame data
+      frame.can_dlc = node::Buffer::Length(Nan::To<Object>(dataArg).ToLocalChecked());    
+      memcpy(frame.data, node::Buffer::Data(Nan::To<Object>(dataArg).ToLocalChecked()), frame.can_dlc);
 
-    { // set time stamp when sending data
-      struct timeval now;
-      if ( 0==gettimeofday(&now, 0)) {
-        Nan::Set(obj, tssec_symbol, Nan::New((int32_t)now.tv_sec));
-        Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)now.tv_usec));
+      { // set time stamp when sending data
+        struct timeval now;
+        if ( 0==gettimeofday(&now, 0)) {
+          Nan::Set(obj, tssec_symbol, Nan::New((int32_t)now.tv_sec));
+          Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)now.tv_usec));
+        }
       }
-    }
 
-    int flags = 0;
+      int flags = 0;
 
-    if (hw->m_NonBlockingSend)
-      flags = MSG_DONTWAIT;
-
-    int i = send(hw->m_SocketFd, &frame, sizeof(struct can_frame), flags);
-
+      if (hw->m_NonBlockingSend)
+        flags = MSG_DONTWAIT;
+    int i = send(hw->m_SocketFd, &frame, sizeof(struct can_frame), flags);  
     info.GetReturnValue().Set(i);
   }
 
+ /**
+   * Send a CAN message immediately.
+   *
+   * PLEASE NOTE: By default, this function may block if the Tx buffer is not available. Please use
+   * createRawChannelWithOptions({non_block_send: false}) to get non-blocking sending activated.
+   *
+   * Added by Guillaume Tournabien 2021_03_14
+   * Note : All the setup is not supported and no protection are included
+   * 
+   * @method send
+   * @param message {Object} JSON object describing the CAN message, keys are id, length, data {Buffer}, ext or rtr
+   */
+  static NAN_METHOD(SendFD)
+  {
+    int requiered_mtu = 1;
+    RawChannel* hw = ObjectWrap::Unwrap<RawChannel>(info.Holder());
+
+    CHECK_CONDITION(info.Length() >= 1, "Invalid arguments");
+    CHECK_CONDITION(info[0]->IsObject(), "First argument must be an Object");
+    CHECK_CONDITION(hw->IsValid(), "Invalid channel!");
+    struct canfd_frame frameFD;                         // GT modif
+    frameFD.flags = 0;                                  //GT modif : Flags not used
+
+    v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
+    v8::Local<v8::Object> obj = Nan::To<Object>(info[0]).ToLocalChecked();
+
+    // CAN FD FRAME
+    // ---------------
+    // TODO: Check for correct structure of message object
+
+      frameFD.can_id = obj->Get(context, id_symbol).ToLocalChecked()->ToUint32(context).ToLocalChecked()->Value();
+      if (obj->Get(context, ext_symbol).ToLocalChecked()->IsTrue())
+        frameFD.can_id  |= CAN_EFF_FLAG;
+
+      v8::Local<v8::Value> dataArg = obj->Get(context, data_symbol).ToLocalChecked();
+
+      CHECK_CONDITION(node::Buffer::HasInstance(dataArg), "Data field must be a Buffer");
+
+      // Get frame data
+      frameFD.len = node::Buffer::Length(Nan::To<Object>(dataArg).ToLocalChecked()); 
+      memcpy(frameFD.data, node::Buffer::Data(Nan::To<Object>(dataArg).ToLocalChecked()), frameFD.len);
+      
+      { // set time stamp when sending data
+        struct timeval now;
+        if ( 0==gettimeofday(&now, 0)) {
+          Nan::Set(obj, tssec_symbol, Nan::New((int32_t)now.tv_sec));
+          Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)now.tv_usec));
+        }
+      }
+
+      int flags = 0;
+
+      if (hw->m_NonBlockingSend)
+      flags = MSG_DONTWAIT;
+      
+      /* ensure discrete CAN FD length values 0..8, 12, 16, 20, 24, 32, 64 */
+      // TODO : Need to implemenat stuffing function 
+      
+      // END TODO
+      int i = send(hw->m_SocketFd,&frameFD,sizeof(struct canfd_frame),requiered_mtu);   //GT modif works for CAN_FD frame   
+      info.GetReturnValue().Set(i);
+  }
   /**
    * Set a list of active filters to be applied for incoming messages
    * @method setRxFilters
@@ -392,8 +472,8 @@ on_error:
     }
 
     if (numfilter)
-      setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_FILTER, rfilter, numfilter * sizeof(struct can_filter));
-
+      //setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_FILTER, rfilter, numfilter * sizeof(struct can_filter));
+      setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_FILTER, NULL, 0);  // GT MODIF
     if (rfilter)
       free(rfilter);
 
@@ -417,7 +497,8 @@ on_error:
 
     can_err_mask_t err_mask = (can_err_mask_t) info[0]->ToUint32(context).ToLocalChecked()->Value();
 
-    setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &err_mask, sizeof(err_mask));
+    //setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &err_mask, sizeof(err_mask));
+    setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_FILTER, NULL, 0);  // GT MODIF
     info.GetReturnValue().Set(info.This());
   }
 
@@ -430,7 +511,8 @@ on_error:
     RawChannel* hw = ObjectWrap::Unwrap<RawChannel>(info.Holder());
     CHECK_CONDITION(hw->IsValid(), "Channel not ready");
     const int loopback = 0;
-    setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_LOOPBACK, &loopback, sizeof(loopback));
+    //setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_LOOPBACK, &loopback, sizeof(loopback));
+    setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_FILTER, NULL, 0);               // GT MODIF
     info.GetReturnValue().Set(info.This());
   }
 
@@ -599,68 +681,139 @@ private:
   {
     Nan::HandleScope scope;
 
-    struct can_frame frame;
-
+    struct canfd_frame framefd;         // GT modif : try to us CANFD trame
+    struct can_frame frame;             // GT modif : try to us CANFD trame
+    
     unsigned int framesProcessed = 0;
-
-    while (recv(m_SocketFd, &frame, sizeof(struct can_frame), MSG_DONTWAIT) > 0)
-    {
-      Nan::TryCatch try_catch;
-
-      v8::Local<v8::Object> obj = Nan::New<v8::Object>();
-
-      canid_t id = frame.can_id;
-      bool isEff = frame.can_id & CAN_EFF_FLAG;
-      bool isRtr = frame.can_id & CAN_RTR_FLAG;
-      bool isErr = frame.can_id & CAN_ERR_FLAG;
-
-      id = isEff ? frame.can_id & CAN_EFF_MASK : frame.can_id & CAN_SFF_MASK;
-
-      v8::Local<v8::Value> argv[] = {
-        obj,
-      };
-
-      if (m_TimestampsSupported)
+    
+    if (Flag_CANFD_Used){               // GT modif : standard CAN frame
+      while (recv(m_SocketFd, &framefd, sizeof(struct canfd_frame), MSG_DONTWAIT) > 0)      // go modif : use CAN_FD struct
       {
-        struct timeval tv;
+        Nan::TryCatch try_catch;
 
-        if (likely(ioctl(m_SocketFd, SIOCGSTAMP, &tv) >= 0))
+        v8::Local<v8::Object> obj = Nan::New<v8::Object>();
+
+        canid_t id = framefd.can_id;
+        bool isEff = framefd.can_id & CAN_EFF_FLAG;
+        bool isRtr = framefd.can_id & CAN_RTR_FLAG;
+        bool isErr = framefd.can_id & CAN_ERR_FLAG;
+
+        id = isEff ? framefd.can_id & CAN_EFF_MASK : framefd.can_id & CAN_SFF_MASK;
+
+        v8::Local<v8::Value> argv[] = {
+          obj,
+        };
+
+        if (m_TimestampsSupported)
         {
-          Nan::Set(obj, tssec_symbol, Nan::New((int32_t)tv.tv_sec));
-          Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)tv.tv_usec));
+          struct timeval tv;
+
+          if (likely(ioctl(m_SocketFd, SIOCGSTAMP, &tv) >= 0))
+          {
+            Nan::Set(obj, tssec_symbol, Nan::New((int32_t)tv.tv_sec));
+            Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)tv.tv_usec));
+          }
         }
+
+        Nan::Set(obj, id_symbol, Nan::New(id));
+
+        if (isEff)
+          Nan::Set(obj, ext_symbol, Nan::New(isEff));
+
+        // RTR not exist on the CAN_FD
+        //if (isRtr)      
+        //  Nan::Set(obj, rtr_symbol, Nan::New(isRtr));
+
+        // GT Modif : add info on the canfd_symbol = 1 to inform about the type of frame receive.
+        Nan::Set(obj, canfd_symbol, Nan::New(1));;
+          
+          
+        if (isErr)
+          Nan::Set(obj, err_symbol, Nan::New(isErr));
+
+        // GT modif 
+        // If the CANFD is used treat the data with 64bytes Max size
+          Nan::Set(obj, data_symbol, Nan::CopyBuffer((char *)framefd.data, framefd.len & 0x7f).ToLocalChecked());      // GT modif : Try to change to CAN_FD struct
+        // GT END of modif
+        
+        for (size_t i = 0; i < m_OnMessageListeners.size(); i++)
+        {
+          struct listener *listener = m_OnMessageListeners.at(i);
+           Nan::Callback callback(Nan::New(listener->callback));
+          if (listener->handle.IsEmpty())
+            callback.Call(1, argv);
+          else
+            callback.Call(Nan::New(listener->handle), 1, argv);
+        }
+
+        if (unlikely(try_catch.HasCaught()))
+          Nan::FatalException(try_catch);
+
+        if (++framesProcessed > MAX_FRAMES_PER_ASYNC_EVENT)
+          break;
       }
-
-      Nan::Set(obj, id_symbol, Nan::New(id));
-
-      if (isEff)
-        Nan::Set(obj, ext_symbol, Nan::New(isEff));
-
-      if (isRtr)
-        Nan::Set(obj, rtr_symbol, Nan::New(isRtr));
-
-      if (isErr)
-        Nan::Set(obj, err_symbol, Nan::New(isErr));
-
-      Nan::Set(obj, data_symbol, Nan::CopyBuffer((char *)frame.data, frame.can_dlc & 0xf).ToLocalChecked());
-
-      for (size_t i = 0; i < m_OnMessageListeners.size(); i++)
-      {
-        struct listener *listener = m_OnMessageListeners.at(i);
-         Nan::Callback callback(Nan::New(listener->callback));
-        if (listener->handle.IsEmpty())
-          callback.Call(1, argv);
-        else
-          callback.Call(Nan::New(listener->handle), 1, argv);
-      }
-
-      if (unlikely(try_catch.HasCaught()))
-        Nan::FatalException(try_catch);
-
-      if (++framesProcessed > MAX_FRAMES_PER_ASYNC_EVENT)
-        break;
     }
+    else{
+      while (recv(m_SocketFd, &frame, sizeof(struct can_frame), MSG_DONTWAIT) > 0)      
+      {
+        Nan::TryCatch try_catch;
 
+        v8::Local<v8::Object> obj = Nan::New<v8::Object>();
+
+        canid_t id = frame.can_id;
+        bool isEff = frame.can_id & CAN_EFF_FLAG;
+        bool isRtr = frame.can_id & CAN_RTR_FLAG;
+        bool isErr = frame.can_id & CAN_ERR_FLAG;
+
+        id = isEff ? frame.can_id & CAN_EFF_MASK : frame.can_id & CAN_SFF_MASK;
+
+        v8::Local<v8::Value> argv[] = {
+          obj,
+        };
+
+        if (m_TimestampsSupported)
+        {
+          struct timeval tv;
+
+          if (likely(ioctl(m_SocketFd, SIOCGSTAMP, &tv) >= 0))
+          {
+            Nan::Set(obj, tssec_symbol, Nan::New((int32_t)tv.tv_sec));
+            Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)tv.tv_usec));
+          }
+        }
+
+        Nan::Set(obj, id_symbol, Nan::New(id));
+
+        if (isEff)
+          Nan::Set(obj, ext_symbol, Nan::New(isEff));
+
+        if (isRtr)
+          Nan::Set(obj, rtr_symbol, Nan::New(isRtr));
+          
+          Nan::Set(obj, canfd_symbol, Nan::New(0));;        // GT modif : Inform that information received are not CAN_FD
+
+        if (isErr)
+          Nan::Set(obj, err_symbol, Nan::New(isErr));
+
+          Nan::Set(obj, data_symbol, Nan::CopyBuffer((char *)frame.data, frame.can_dlc & 0xf).ToLocalChecked()); 
+        
+        for (size_t i = 0; i < m_OnMessageListeners.size(); i++)
+        {
+          struct listener *listener = m_OnMessageListeners.at(i);
+           Nan::Callback callback(Nan::New(listener->callback));
+          if (listener->handle.IsEmpty())
+            callback.Call(1, argv);
+          else
+            callback.Call(Nan::New(listener->handle), 1, argv);
+        }
+
+        if (unlikely(try_catch.HasCaught()))
+          Nan::FatalException(try_catch);
+
+        if (++framesProcessed > MAX_FRAMES_PER_ASYNC_EVENT)
+          break;
+      }     
+    }
     pthread_mutex_lock(&m_ReadPendingMtx);
 
     m_ReadPending = false;
