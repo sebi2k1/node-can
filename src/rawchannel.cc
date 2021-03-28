@@ -69,7 +69,7 @@ using namespace v8;
  * Basic CAN & CAN_FD access
  * @module CAN
  */
-private static int Flag_CANFD_Used=0;         // Add a global Flag to treat the information according the interface capability, see Init function
+static int Flag_CANFD_Used=0;         // Add a global Flag to treat the information according the interface capability, see Init function
 
 //-----------------------------------------------------------------------------------------
 /**
