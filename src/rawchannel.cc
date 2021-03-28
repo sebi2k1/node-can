@@ -69,7 +69,7 @@ using namespace v8;
  * Basic CAN & CAN_FD access
  * @module CAN
  */
-static int Flag_CANFD_Used=0;         // Add a global Flag to treat the information according the interface capability, see Init function
+private static int Flag_CANFD_Used=0;         // Add a global Flag to treat the information according the interface capability, see Init function
 
 //-----------------------------------------------------------------------------------------
 /**
@@ -380,8 +380,8 @@ on_error:
     CHECK_CONDITION(info.Length() >= 1, "Invalid arguments");
     CHECK_CONDITION(info[0]->IsObject(), "First argument must be an Object");
     CHECK_CONDITION(hw->IsValid(), "Invalid channel!");
-    struct canfd_frame frameFD;                         // GT modif
-    frameFD.flags = 0;                                  //GT modif : Flags not used
+    struct canfd_frame frameFD;                         
+    frameFD.flags = 0;                                  // Flags not used on the function
 
     v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
     v8::Local<v8::Object> obj = Nan::To<Object>(info[0]).ToLocalChecked();
@@ -416,10 +416,12 @@ on_error:
       flags = MSG_DONTWAIT;
       
       /* ensure discrete CAN FD length values 0..8, 12, 16, 20, 24, 32, 64 */
-      // TODO : Need to implemenat stuffing function 
+      // TODO : Need to implemenat stuffing function
+      // TODO : CANFD_MTU is not used and fix to 1 but if the MTU need to be implemented, the maximum value is #define CANFD_MTU = 72 in linux/can.h 
+      // FLAGS this instantce are not used. If addition support is needed please add the management of the FLAGS
       
       // END TODO
-      int i = send(hw->m_SocketFd,&frameFD,sizeof(struct canfd_frame),requiered_mtu);   //GT modif works for CAN_FD frame   
+      int i = send(hw->m_SocketFd,&frameFD,sizeof(struct canfd_frame),requiered_mtu);   //works for CAN_FD frame   
       info.GetReturnValue().Set(i);
   }
   /**
@@ -467,8 +469,7 @@ on_error:
     }
 
     if (numfilter)
-      //setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_FILTER, rfilter, numfilter * sizeof(struct can_filter));
-      setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_FILTER, NULL, 0);  // GT MODIF
+      setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_FILTER, NULL, 0);  
     if (rfilter)
       free(rfilter);
 
@@ -492,8 +493,7 @@ on_error:
 
     can_err_mask_t err_mask = (can_err_mask_t) info[0]->ToUint32(context).ToLocalChecked()->Value();
 
-    //setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &err_mask, sizeof(err_mask));
-    setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_FILTER, NULL, 0);  // GT MODIF
+    setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_FILTER, NULL, 0);  
     info.GetReturnValue().Set(info.This());
   }
 
@@ -506,8 +506,7 @@ on_error:
     RawChannel* hw = ObjectWrap::Unwrap<RawChannel>(info.Holder());
     CHECK_CONDITION(hw->IsValid(), "Channel not ready");
     const int loopback = 0;
-    //setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_LOOPBACK, &loopback, sizeof(loopback));
-    setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_FILTER, NULL, 0);               // GT MODIF
+    setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_FILTER, NULL, 0);
     info.GetReturnValue().Set(info.This());
   }
 
@@ -676,12 +675,12 @@ private:
   {
     Nan::HandleScope scope;
 
-    struct canfd_frame framefd;         // GT modif : try to us CANFD trame
-    struct can_frame frame;             // GT modif : try to us CANFD trame
+    struct canfd_frame framefd;         // for CANFD frame
+    struct can_frame frame;             // for CAN frame
     
     unsigned int framesProcessed = 0;
     
-    if (Flag_CANFD_Used){               // GT modif : standard CAN frame
+    if (Flag_CANFD_Used){               // standard CAN frame
       while (recv(m_SocketFd, &framefd, sizeof(struct canfd_frame), MSG_DONTWAIT) > 0)      // go modif : use CAN_FD struct
       {
         Nan::TryCatch try_catch;
@@ -715,21 +714,15 @@ private:
         if (isEff)
           Nan::Set(obj, ext_symbol, Nan::New(isEff));
 
-        // RTR not exist on the CAN_FD
-        //if (isRtr)      
-        //  Nan::Set(obj, rtr_symbol, Nan::New(isRtr));
-
-        // GT Modif : add info on the canfd_symbol = 1 to inform about the type of frame receive.
+        // add info on the canfd_symbol = 1 to inform about the type of frame receive.
         Nan::Set(obj, canfd_symbol, Nan::New(1));;
           
           
         if (isErr)
           Nan::Set(obj, err_symbol, Nan::New(isErr));
 
-        // GT modif 
         // If the CANFD is used treat the data with 64bytes Max size
-          Nan::Set(obj, data_symbol, Nan::CopyBuffer((char *)framefd.data, framefd.len & 0x7f).ToLocalChecked());      // GT modif : Try to change to CAN_FD struct
-        // GT END of modif
+          Nan::Set(obj, data_symbol, Nan::CopyBuffer((char *)framefd.data, framefd.len & 0x7f).ToLocalChecked());      // Try to change to CAN_FD struct
         
         for (size_t i = 0; i < m_OnMessageListeners.size(); i++)
         {
@@ -785,7 +778,7 @@ private:
         if (isRtr)
           Nan::Set(obj, rtr_symbol, Nan::New(isRtr));
           
-          Nan::Set(obj, canfd_symbol, Nan::New(0));;        // GT modif : Inform that information received are not CAN_FD
+          Nan::Set(obj, canfd_symbol, Nan::New(0));;        // Inform that information received are not CAN_FD
 
         if (isErr)
           Nan::Set(obj, err_symbol, Nan::New(isErr));
