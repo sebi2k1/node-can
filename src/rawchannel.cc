@@ -19,10 +19,6 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
- 
- /*
-  * 
-  */
 
 #include <nan.h>
 #include <node_buffer.h>
@@ -73,7 +69,7 @@ using namespace v8;
  * Basic CAN & CAN_FD access
  * @module CAN
  */
-static int Flag_CANFD_Used=0;         // GT modif : Add a global Flag to treat the information according the interface capability, see Init function
+static int Flag_CANFD_Used=0;         // Add a global Flag to treat the information according the interface capability, see Init function
 
 //-----------------------------------------------------------------------------------------
 /**
@@ -100,7 +96,7 @@ public:
     Nan::SetPrototypeMethod(tpl, "start",           Start);
     Nan::SetPrototypeMethod(tpl, "stop",            Stop);
     Nan::SetPrototypeMethod(tpl, "send",            Send);
-    Nan::SetPrototypeMethod(tpl, "sendFD",          SendFD);                  // GT MODIF : add function for SEND_CANFD frame
+    Nan::SetPrototypeMethod(tpl, "sendFD",          SendFD);                  //add dedicate function for SEND_CANFD frame
     Nan::SetPrototypeMethod(tpl, "setRxFilters",    SetRxFilters);
     Nan::SetPrototypeMethod(tpl, "setErrorFilters", SetErrorFilters);
     Nan::SetPrototypeMethod(tpl, "disableLoopback", DisableLoopback);
@@ -132,11 +128,11 @@ private:
 
       // Configuration updated to use the CAN_FD 
       err_mask = CAN_ERR_MASK;
-      Flag_CANFD_Used = 1 ;                                                                               // GT MODIF : try to use CAN_FD first
-      if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_FD_FRAMES,&canfd_on, sizeof(canfd_on)) != 0)        // GT MODIF : configuration for CAN_FD
+      Flag_CANFD_Used = 1 ;                                                                               // try to use CAN_FD first
+      if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_FD_FRAMES,&canfd_on, sizeof(canfd_on)) != 0)        // configuration for CAN_FD
       {
-        Flag_CANFD_Used = 0 ;                                                                               // GT MODIF : CAN_FD not usable
-        if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &err_mask, sizeof(err_mask)) != 0)          // GT MODIF : configuration for CAN_HS
+        Flag_CANFD_Used = 0 ;                                                                               // CAN_FD not usable
+        if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &err_mask, sizeof(err_mask)) != 0)      // So use the configuration for CAN_HS
           {
             goto on_error;
           }
@@ -320,7 +316,6 @@ on_error:
    */
   static NAN_METHOD(Send)
   {
-    int requiered_mtu = 1;
     RawChannel* hw = ObjectWrap::Unwrap<RawChannel>(info.Holder());
 
     CHECK_CONDITION(info.Length() >= 1, "Invalid arguments");
