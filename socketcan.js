@@ -373,8 +373,7 @@ DatabaseService.prototype.send = function (msg_name) {
         id: m.id,
         ext: m.ext,
         rtr: false,
-        //data : (m.len > 0 && m.len < 8) ? Buffer.alloc(m.len) : Buffer.alloc(8)
-        data : (m.len > 0 && m.len < 64) ? Buffer.alloc(m.len) : Buffer.alloc(64)         // gt modif for CANFD
+        data : (m.len > 0 && m.len < 64) ? Buffer.alloc(m.len) : Buffer.alloc(64)         // for CANFD data buffer 64 bytes
     };
 
     canmsg.data.fill(0); // should be 0xFF for j1939 message def.
