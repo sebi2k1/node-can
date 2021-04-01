@@ -70,11 +70,6 @@ using namespace v8;
  * @module CAN
  */
 
-/* TODO */
-// define the variable as Member of this instance and not as Global Variable
-// Need help to declare properly this variable
-int Flag_CANFD_Used=0;         // Add a global Flag to treat the information according the interface capability, see Init function
-
 //-----------------------------------------------------------------------------------------
 /**
  * A Raw channel to access a certain CAN channel (e.g. vcan0) via CAN messages.
@@ -84,6 +79,7 @@ class RawChannel : public Nan::ObjectWrap
 {
 private:
   static Nan::Persistent<v8::Function> constructor;
+  int Flag_CANFD_Used=0;         // Add a global Flag to treat the information according the interface capability, see Init function
 
 public:
   static NAN_MODULE_INIT(Init)
