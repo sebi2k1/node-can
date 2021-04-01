@@ -251,7 +251,7 @@ function Message(desc)
      * @attribute Boolean
      * @final
      */
-     this.canfd = desc.canfd;           //GT modif
+     this.canfd = desc.canfd;  
 
     /**
      * Named array of signals within this message. Accessible via index and name.
