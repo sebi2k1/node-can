@@ -73,7 +73,7 @@ using namespace v8;
 /* TODO */
 // define the variable as Member of this instance and not as Global Variable
 // Need help to declare properly this variable
-static int Flag_CANFD_Used=0;         // Add a global Flag to treat the information according the interface capability, see Init function
+int Flag_CANFD_Used=0;         // Add a global Flag to treat the information according the interface capability, see Init function
 
 //-----------------------------------------------------------------------------------------
 /**
