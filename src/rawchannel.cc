@@ -79,7 +79,6 @@ class RawChannel : public Nan::ObjectWrap
 {
 private:
   static Nan::Persistent<v8::Function> constructor;
-  int m_IsCanFdUsed=0;         // Add a global Flag to treat the information according the interface capability, see Init function
 
 public:
   static NAN_MODULE_INIT(Init)
@@ -548,6 +547,7 @@ private:
 
   int m_SocketFd;
   struct sockaddr_can m_SocketAddr;
+  int m_IsCanFdUsed=0;
 
   bool m_ThreadStopRequested;
   bool m_TimestampsSupported;
