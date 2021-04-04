@@ -110,7 +110,7 @@ private:
   explicit RawChannel(const char *name, bool timestamps, int protocol, bool non_block_send)
     : m_Thread(0), m_Name(name), m_SocketFd(-1)
   {
-    static const int canfd_on = 1;
+    const int canfd_on = 1;
     m_SocketFd = socket(PF_CAN, SOCK_RAW, protocol);
     m_ThreadStopRequested = false;
     m_TimestampsSupported = timestamps;
@@ -129,7 +129,7 @@ private:
       // Configuration updated to use the CAN_FD 
       err_mask = CAN_ERR_MASK;
       m_IsCanFdUsed = 1 ;                                                                               // try to use CAN_FD first
-      if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_FD_FRAMES,&canfd_on, sizeof(canfd_on)) != 0)        // configuration for CAN_FD
+      if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_FD_FRAMES, &canfd_on, sizeof(canfd_on)) != 0)        // configuration for CAN_FD
       {
         m_IsCanFdUsed = 0 ;                                                                               // CAN_FD not usable
         if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &err_mask, sizeof(err_mask)) != 0)      // So use the configuration for CAN_HS
