@@ -324,8 +324,6 @@ on_error:
     v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
     v8::Local<v8::Object> obj = Nan::To<Object>(info[0]).ToLocalChecked();
 
-    // CAN HS FRAME
-    // ---------------
     // TODO: Check for correct structure of message object
 
       frame.can_id = obj->Get(context, id_symbol).ToLocalChecked()->ToUint32(context).ToLocalChecked()->Value();
