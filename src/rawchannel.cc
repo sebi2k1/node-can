@@ -127,11 +127,11 @@ private:
 
       // Configuration updated to use the CAN_FD 
       err_mask = CAN_ERR_MASK;
-      m_IsCanFdUsed = 1 ;                                                                               // try to use CAN_FD first
-      if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_FD_FRAMES, &canfd_on, sizeof(canfd_on)) != 0)        // configuration for CAN_FD
+      m_IsCanFdUsed = 1 ;
+      if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_FD_FRAMES, &canfd_on, sizeof(canfd_on)) != 0)        // switch socket to CANFD mode
       {
-        m_IsCanFdUsed = 0 ;                                                                               // CAN_FD not usable
-        if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &err_mask, sizeof(err_mask)) != 0)    // test for CAN_HS
+        m_IsCanFdUsed = 0 ;
+        if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &err_mask, sizeof(err_mask)) != 0)
           {
             goto on_error;
           }
