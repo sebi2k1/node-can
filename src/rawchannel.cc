@@ -492,7 +492,7 @@ on_error:
 
     can_err_mask_t err_mask = (can_err_mask_t) info[0]->ToUint32(context).ToLocalChecked()->Value();
 
-    setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_FILTER, NULL, 0);  
+    setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &err_mask, sizeof(err_mask));
     info.GetReturnValue().Set(info.This());
   }
 
