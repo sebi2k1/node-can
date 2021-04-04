@@ -79,7 +79,7 @@ class RawChannel : public Nan::ObjectWrap
 {
 private:
   static Nan::Persistent<v8::Function> constructor;
-  int Flag_CANFD_Used=0;         // Add a global Flag to treat the information according the interface capability, see Init function
+  int m_IsCanFdUsed=0;         // Add a global Flag to treat the information according the interface capability, see Init function
 
 public:
   static NAN_MODULE_INIT(Init)
@@ -96,7 +96,7 @@ public:
     Nan::SetPrototypeMethod(tpl, "start",           Start);
     Nan::SetPrototypeMethod(tpl, "stop",            Stop);
     Nan::SetPrototypeMethod(tpl, "send",            Send);
-    Nan::SetPrototypeMethod(tpl, "sendFD",          SendFD);                  //add dedicate function for SEND_CANFD frame
+    Nan::SetPrototypeMethod(tpl, "sendFD",          SendFD);
     Nan::SetPrototypeMethod(tpl, "setRxFilters",    SetRxFilters);
     Nan::SetPrototypeMethod(tpl, "setErrorFilters", SetErrorFilters);
     Nan::SetPrototypeMethod(tpl, "disableLoopback", DisableLoopback);
@@ -111,7 +111,7 @@ private:
     : m_Thread(0), m_Name(name), m_SocketFd(-1)
   {
     static const int canfd_on = 1;
-    m_SocketFd = socket(PF_CAN, SOCK_RAW, protocol);    // OPen the socket
+    m_SocketFd = socket(PF_CAN, SOCK_RAW, protocol);
     m_ThreadStopRequested = false;
     m_TimestampsSupported = timestamps;
     m_NonBlockingSend = non_block_send;
@@ -128,10 +128,10 @@ private:
 
       // Configuration updated to use the CAN_FD 
       err_mask = CAN_ERR_MASK;
-      Flag_CANFD_Used = 1 ;                                                                               // try to use CAN_FD first
+      m_IsCanFdUsed = 1 ;                                                                               // try to use CAN_FD first
       if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_FD_FRAMES,&canfd_on, sizeof(canfd_on)) != 0)        // configuration for CAN_FD
       {
-        Flag_CANFD_Used = 0 ;                                                                               // CAN_FD not usable
+        m_IsCanFdUsed = 0 ;                                                                               // CAN_FD not usable
         if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &err_mask, sizeof(err_mask)) != 0)      // So use the configuration for CAN_HS
           {
             goto on_error;
@@ -680,7 +680,7 @@ private:
     
     unsigned int framesProcessed = 0;
     
-    if (Flag_CANFD_Used){               // standard CAN frame
+    if (m_IsCanFdUsed){               // standard CAN frame
       while (recv(m_SocketFd, &framefd, sizeof(struct canfd_frame), MSG_DONTWAIT) > 0)      // go modif : use CAN_FD struct
       {
         Nan::TryCatch try_catch;
