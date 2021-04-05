@@ -676,61 +676,61 @@ private:
     
     unsigned int framesProcessed = 0;
     
-      while (recv(m_SocketFd, &framefd, sizeof(struct canfd_frame), MSG_DONTWAIT) > 0)
+    while (recv(m_SocketFd, &framefd, sizeof(struct canfd_frame), MSG_DONTWAIT) > 0)
+    {
+      Nan::TryCatch try_catch;
+
+      v8::Local<v8::Object> obj = Nan::New<v8::Object>();
+
+      canid_t id = framefd.can_id;
+      bool isEff = framefd.can_id & CAN_EFF_FLAG;
+      bool isRtr = framefd.can_id & CAN_RTR_FLAG;
+      bool isErr = framefd.can_id & CAN_ERR_FLAG;
+
+      id = isEff ? framefd.can_id & CAN_EFF_MASK : framefd.can_id & CAN_SFF_MASK;
+
+      v8::Local<v8::Value> argv[] = {
+        obj,
+      };
+
+      if (m_TimestampsSupported)
       {
-        Nan::TryCatch try_catch;
+        struct timeval tv;
 
-        v8::Local<v8::Object> obj = Nan::New<v8::Object>();
-
-        canid_t id = framefd.can_id;
-        bool isEff = framefd.can_id & CAN_EFF_FLAG;
-        bool isRtr = framefd.can_id & CAN_RTR_FLAG;
-        bool isErr = framefd.can_id & CAN_ERR_FLAG;
-
-        id = isEff ? framefd.can_id & CAN_EFF_MASK : framefd.can_id & CAN_SFF_MASK;
-
-        v8::Local<v8::Value> argv[] = {
-          obj,
-        };
-
-        if (m_TimestampsSupported)
+        if (likely(ioctl(m_SocketFd, SIOCGSTAMP, &tv) >= 0))
         {
-          struct timeval tv;
-
-          if (likely(ioctl(m_SocketFd, SIOCGSTAMP, &tv) >= 0))
-          {
-            Nan::Set(obj, tssec_symbol, Nan::New((int32_t)tv.tv_sec));
-            Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)tv.tv_usec));
-          }
+          Nan::Set(obj, tssec_symbol, Nan::New((int32_t)tv.tv_sec));
+          Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)tv.tv_usec));
         }
-
-        Nan::Set(obj, id_symbol, Nan::New(id));
-
-        if (isEff)
-          Nan::Set(obj, ext_symbol, Nan::New(isEff));        
-
-        if (isErr)
-          Nan::Set(obj, err_symbol, Nan::New(isErr));
-
-        // If the CANFD is used treat the data with 64bytes Max size
-          Nan::Set(obj, data_symbol, Nan::CopyBuffer((char *)framefd.data, framefd.len & 0x7f).ToLocalChecked());      // Try to change to CAN_FD struct
-        
-        for (size_t i = 0; i < m_OnMessageListeners.size(); i++)
-        {
-          struct listener *listener = m_OnMessageListeners.at(i);
-           Nan::Callback callback(Nan::New(listener->callback));
-          if (listener->handle.IsEmpty())
-            callback.Call(1, argv);
-          else
-            callback.Call(Nan::New(listener->handle), 1, argv);
-        }
-
-        if (unlikely(try_catch.HasCaught()))
-          Nan::FatalException(try_catch);
-
-        if (++framesProcessed > MAX_FRAMES_PER_ASYNC_EVENT)
-          break;
       }
+
+      Nan::Set(obj, id_symbol, Nan::New(id));
+
+      if (isEff)
+        Nan::Set(obj, ext_symbol, Nan::New(isEff));        
+
+      if (isErr)
+        Nan::Set(obj, err_symbol, Nan::New(isErr));
+
+      // If the CANFD is used treat the data with 64bytes Max size
+      Nan::Set(obj, data_symbol, Nan::CopyBuffer((char *)framefd.data, framefd.len & 0x7f).ToLocalChecked());      // Try to change to CAN_FD struct
+
+      for (size_t i = 0; i < m_OnMessageListeners.size(); i++)
+      {
+        struct listener *listener = m_OnMessageListeners.at(i);
+         Nan::Callback callback(Nan::New(listener->callback));
+        if (listener->handle.IsEmpty())
+          callback.Call(1, argv);
+        else
+          callback.Call(Nan::New(listener->handle), 1, argv);
+      }
+
+      if (unlikely(try_catch.HasCaught()))
+        Nan::FatalException(try_catch);
+
+      if (++framesProcessed > MAX_FRAMES_PER_ASYNC_EVENT)
+        break;
+    }
     pthread_mutex_lock(&m_ReadPendingMtx);
 
     m_ReadPending = false;
