@@ -471,6 +471,7 @@ on_error:
 
     if (numfilter)
       setsockopt(hw->m_SocketFd, SOL_CAN_RAW, CAN_RAW_FILTER, rfilter, numfilter * sizeof(struct can_filter));
+    
     if (rfilter)
       free(rfilter);
 
