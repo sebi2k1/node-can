@@ -358,7 +358,7 @@ on_error:
   }
 
  /**
-   * Send a CAN message immediately.
+   * Send a CAN_FD message immediately.
    *
    * PLEASE NOTE: By default, this function may block if the Tx buffer is not available. Please use
    * createRawChannelWithOptions({non_block_send: false}) to get non-blocking sending activated.
