@@ -366,7 +366,7 @@ on_error:
    * Note : All the setup is not supported and no protection are included
    * 
    * @method send
-   * @param message {Object} JSON object describing the CAN message, keys are id, length, data {Buffer}, ext or rtr
+   * @param message {Object} JSON object describing the CAN message, keys are id, length, data {Buffer}, ext
    */
   static NAN_METHOD(SendFD)
   {
