@@ -349,7 +349,7 @@ on_error:
     if (hw->m_NonBlockingSend)
       flags = MSG_DONTWAIT;
 
-    int i = send(hw->m_SocketFd, &frame, sizeof(struct can_frame), flags);  
+    int i = send(hw->m_SocketFd, &frame, sizeof(struct can_frame), flags);
 
     info.GetReturnValue().Set(i);
   }
