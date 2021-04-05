@@ -683,8 +683,8 @@ private:
     
     unsigned int framesProcessed = 0;
     
-    if (m_IsCanFdUsed){               // standard CAN frame
-      while (recv(m_SocketFd, &framefd, sizeof(struct canfd_frame), MSG_DONTWAIT) > 0)      // go modif : use CAN_FD struct
+    if (m_IsCanFdUsed){
+      while (recv(m_SocketFd, &framefd, sizeof(struct canfd_frame), MSG_DONTWAIT) > 0)
       {
         Nan::TryCatch try_catch;
 
