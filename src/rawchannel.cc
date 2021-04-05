@@ -672,22 +672,22 @@ private:
   {
     Nan::HandleScope scope;
 
-    struct canfd_frame framefd;
-    
+    struct canfd_frame frame;
+
     unsigned int framesProcessed = 0;
-    
-    while (recv(m_SocketFd, &framefd, sizeof(struct canfd_frame), MSG_DONTWAIT) > 0)
+
+    while (recv(m_SocketFd, &frame, sizeof(struct canfd_frame), MSG_DONTWAIT) > 0)
     {
       Nan::TryCatch try_catch;
 
       v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
-      canid_t id = framefd.can_id;
-      bool isEff = framefd.can_id & CAN_EFF_FLAG;
-      bool isRtr = framefd.can_id & CAN_RTR_FLAG;
-      bool isErr = framefd.can_id & CAN_ERR_FLAG;
+      canid_t id = frame.can_id;
+      bool isEff = frame.can_id & CAN_EFF_FLAG;
+      bool isRtr = frame.can_id & CAN_RTR_FLAG;
+      bool isErr = frame.can_id & CAN_ERR_FLAG;
 
-      id = isEff ? framefd.can_id & CAN_EFF_MASK : framefd.can_id & CAN_SFF_MASK;
+      id = isEff ? frame.can_id & CAN_EFF_MASK : frame.can_id & CAN_SFF_MASK;
 
       v8::Local<v8::Value> argv[] = {
         obj,
@@ -707,13 +707,15 @@ private:
       Nan::Set(obj, id_symbol, Nan::New(id));
 
       if (isEff)
-        Nan::Set(obj, ext_symbol, Nan::New(isEff));        
+        Nan::Set(obj, ext_symbol, Nan::New(isEff));
+
+      if (isRtr)
+        Nan::Set(obj, rtr_symbol, Nan::New(isRtr));
 
       if (isErr)
         Nan::Set(obj, err_symbol, Nan::New(isErr));
 
-      // If the CANFD is used treat the data with 64bytes Max size
-      Nan::Set(obj, data_symbol, Nan::CopyBuffer((char *)framefd.data, framefd.len & 0x7f).ToLocalChecked());      // Try to change to CAN_FD struct
+      Nan::Set(obj, data_symbol, Nan::CopyBuffer((char *)frame.data, frame.len & 0x7f).ToLocalChecked());
 
       for (size_t i = 0; i < m_OnMessageListeners.size(); i++)
       {
@@ -731,6 +733,7 @@ private:
       if (++framesProcessed > MAX_FRAMES_PER_ASYNC_EVENT)
         break;
     }
+
     pthread_mutex_lock(&m_ReadPendingMtx);
 
     m_ReadPending = false;
