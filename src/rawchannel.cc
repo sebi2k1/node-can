@@ -320,8 +320,8 @@ on_error:
     v8::Local<v8::Object> obj = Nan::To<Object>(info[0]).ToLocalChecked();
 
     // TODO: Check for correct structure of message object
-
     frame.can_id = obj->Get(context, id_symbol).ToLocalChecked()->ToUint32(context).ToLocalChecked()->Value();
+
     if (obj->Get(context, ext_symbol).ToLocalChecked()->IsTrue())
       frame.can_id |= CAN_EFF_FLAG;
 
