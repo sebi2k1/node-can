@@ -371,7 +371,6 @@ on_error:
    */
   static NAN_METHOD(SendFD)
   {
-    int requiered_mtu = 1;
     RawChannel* hw = ObjectWrap::Unwrap<RawChannel>(info.Holder());
 
     CHECK_CONDITION(info.Length() >= 1, "Invalid arguments");
@@ -387,39 +386,44 @@ on_error:
     // ---------------
     // TODO: Check for correct structure of message object
 
-      frameFD.can_id = obj->Get(context, id_symbol).ToLocalChecked()->ToUint32(context).ToLocalChecked()->Value();
-      if (obj->Get(context, ext_symbol).ToLocalChecked()->IsTrue())
-        frameFD.can_id  |= CAN_EFF_FLAG;
+    frameFD.can_id = obj->Get(context, id_symbol).ToLocalChecked()->ToUint32(context).ToLocalChecked()->Value();
+    if (obj->Get(context, ext_symbol).ToLocalChecked()->IsTrue())
+      frameFD.can_id  |= CAN_EFF_FLAG;
 
-      v8::Local<v8::Value> dataArg = obj->Get(context, data_symbol).ToLocalChecked();
+    v8::Local<v8::Value> dataArg = obj->Get(context, data_symbol).ToLocalChecked();
 
-      CHECK_CONDITION(node::Buffer::HasInstance(dataArg), "Data field must be a Buffer");
+    CHECK_CONDITION(node::Buffer::HasInstance(dataArg), "Data field must be a Buffer");
 
-      // Get frame data
-      frameFD.len = node::Buffer::Length(Nan::To<Object>(dataArg).ToLocalChecked()); 
-      memcpy(frameFD.data, node::Buffer::Data(Nan::To<Object>(dataArg).ToLocalChecked()), frameFD.len);
-      
-      { // set time stamp when sending data
-        struct timeval now;
-        if ( 0==gettimeofday(&now, 0)) {
-          Nan::Set(obj, tssec_symbol, Nan::New((int32_t)now.tv_sec));
-          Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)now.tv_usec));
-        }
+    // Get frame data
+    frameFD.len = node::Buffer::Length(Nan::To<Object>(dataArg).ToLocalChecked()); 
+    memset(frameFD.data,0,sizeof(frameFD.data));
+    memcpy(frameFD.data, node::Buffer::Data(Nan::To<Object>(dataArg).ToLocalChecked()), frameFD.len);
+
+    { // set time stamp when sending data
+      struct timeval now;
+      if ( 0==gettimeofday(&now, 0)) {
+        Nan::Set(obj, tssec_symbol, Nan::New((int32_t)now.tv_sec));
+        Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)now.tv_usec));
       }
+    }
 
-      int flags = 0;
+    /* ensure discrete CAN FD length values 0..8, 12, 16, 20, 24, 32, 48, 64 bytes cf ISO11898-1*/
+    static const unsigned char len2dlc[] = {0, 1, 2, 3, 4, 5, 6, 7, 8,		/* 0 - 8 */
+        12, 12, 12, 12,				                                            /* 9 - 12 */
+        16, 16, 16, 16,				                                            /* 13 - 16 */
+        20, 20, 20, 20,				                                            /* 17 - 20 */
+        24, 24, 24, 24,				                                            /* 21 - 24 */
+        32, 32, 32, 32, 32, 32, 32, 32,		                                /* 25 - 32 */
+        48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48,		/* 33 - 48 */
+        64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64};	/* 49 - 64 */      
+    if ( frameFD.len > 64) 
+      frameFD.len = 64;
+    frameFD.len = len2dlc[frameFD.len];
 
-      if (hw->m_NonBlockingSend)
+    if (hw->m_NonBlockingSend)
       flags = MSG_DONTWAIT;
-      
-      /* ensure discrete CAN FD length values 0..8, 12, 16, 20, 24, 32, 64 */
-      // TODO : Need to implemenat stuffing function
-      // TODO : CANFD_MTU is not used and fix to 1 but if the MTU need to be implemented, the maximum value is #define CANFD_MTU = 72 in linux/can.h 
-      // FLAGS this instantce are not used. If addition support is needed please add the management of the FLAGS
-      
-      // END TODO
-      int i = send(hw->m_SocketFd,&frameFD,sizeof(struct canfd_frame),requiered_mtu);   //works for CAN_FD frame   
-      info.GetReturnValue().Set(i);
+    int i = send(hw->m_SocketFd,&frameFD,sizeof(struct canfd_frame),flags); 
+    info.GetReturnValue().Set(i);
   }
   /**
    * Set a list of active filters to be applied for incoming messages
