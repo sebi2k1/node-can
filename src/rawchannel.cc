@@ -321,33 +321,33 @@ on_error:
 
     // TODO: Check for correct structure of message object
 
-      frame.can_id = obj->Get(context, id_symbol).ToLocalChecked()->ToUint32(context).ToLocalChecked()->Value();
-      if (obj->Get(context, ext_symbol).ToLocalChecked()->IsTrue())
-        frame.can_id |= CAN_EFF_FLAG;
+    frame.can_id = obj->Get(context, id_symbol).ToLocalChecked()->ToUint32(context).ToLocalChecked()->Value();
+    if (obj->Get(context, ext_symbol).ToLocalChecked()->IsTrue())
+      frame.can_id |= CAN_EFF_FLAG;
 
-      if (obj->Get(context, rtr_symbol).ToLocalChecked()->IsTrue())
-        frame.can_id |= CAN_RTR_FLAG;
+    if (obj->Get(context, rtr_symbol).ToLocalChecked()->IsTrue())
+      frame.can_id |= CAN_RTR_FLAG;
 
-      v8::Local<v8::Value> dataArg = obj->Get(context, data_symbol).ToLocalChecked();
+    v8::Local<v8::Value> dataArg = obj->Get(context, data_symbol).ToLocalChecked();
 
-      CHECK_CONDITION(node::Buffer::HasInstance(dataArg), "Data field must be a Buffer");
+    CHECK_CONDITION(node::Buffer::HasInstance(dataArg), "Data field must be a Buffer");
 
-      // Get frame data
-      frame.can_dlc = node::Buffer::Length(Nan::To<Object>(dataArg).ToLocalChecked());    
-      memcpy(frame.data, node::Buffer::Data(Nan::To<Object>(dataArg).ToLocalChecked()), frame.can_dlc);
+    // Get frame data
+    frame.can_dlc = node::Buffer::Length(Nan::To<Object>(dataArg).ToLocalChecked());    
+    memcpy(frame.data, node::Buffer::Data(Nan::To<Object>(dataArg).ToLocalChecked()), frame.can_dlc);
 
-      { // set time stamp when sending data
-        struct timeval now;
-        if ( 0==gettimeofday(&now, 0)) {
-          Nan::Set(obj, tssec_symbol, Nan::New((int32_t)now.tv_sec));
-          Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)now.tv_usec));
-        }
+    { // set time stamp when sending data
+      struct timeval now;
+      if ( 0==gettimeofday(&now, 0)) {
+        Nan::Set(obj, tssec_symbol, Nan::New((int32_t)now.tv_sec));
+        Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)now.tv_usec));
       }
+    }
 
-      int flags = 0;
+    int flags = 0;
 
-      if (hw->m_NonBlockingSend)
-        flags = MSG_DONTWAIT;
+    if (hw->m_NonBlockingSend)
+      flags = MSG_DONTWAIT;
     int i = send(hw->m_SocketFd, &frame, sizeof(struct can_frame), flags);  
     info.GetReturnValue().Set(i);
   }
