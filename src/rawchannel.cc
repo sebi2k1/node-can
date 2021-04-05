@@ -125,12 +125,11 @@ private:
       if (ioctl(m_SocketFd, SIOCGIFINDEX, &ifr) != 0)
         goto on_error;
 
-      // Configuration updated to use the CAN_FD 
       err_mask = CAN_ERR_MASK;
 
       /* try to switch the socket into CAN FD mode */
       setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_FD_FRAMES, &canfd_on, sizeof(canfd_on));
-    
+
       if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &err_mask, sizeof(err_mask)) != 0)
         goto on_error;
 
@@ -148,7 +147,7 @@ private:
 
       return;
 
-    on_error:
+      on_error:
       close(m_SocketFd);
       m_SocketFd = -1;
     }
