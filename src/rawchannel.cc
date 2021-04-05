@@ -363,7 +363,6 @@ on_error:
    * PLEASE NOTE: By default, this function may block if the Tx buffer is not available. Please use
    * createRawChannelWithOptions({non_block_send: false}) to get non-blocking sending activated.
    *
-   * Added by Guillaume Tournabien 2021_03_14
    * Note : All the setup is not supported and no protection are included
    * 
    * @method send
@@ -419,7 +418,8 @@ on_error:
     if ( frameFD.len > 64) 
       frameFD.len = 64;
     frameFD.len = len2dlc[frameFD.len];
-
+    
+    int flags = 0;
     if (hw->m_NonBlockingSend)
       flags = MSG_DONTWAIT;
     int i = send(hw->m_SocketFd,&frameFD,sizeof(struct canfd_frame),flags); 
