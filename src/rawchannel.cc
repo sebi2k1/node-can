@@ -333,7 +333,7 @@ on_error:
     CHECK_CONDITION(node::Buffer::HasInstance(dataArg), "Data field must be a Buffer");
 
     // Get frame data
-    frame.can_dlc = node::Buffer::Length(Nan::To<Object>(dataArg).ToLocalChecked());    
+    frame.can_dlc = node::Buffer::Length(Nan::To<Object>(dataArg).ToLocalChecked());
     memcpy(frame.data, node::Buffer::Data(Nan::To<Object>(dataArg).ToLocalChecked()), frame.can_dlc);
 
     { // set time stamp when sending data
