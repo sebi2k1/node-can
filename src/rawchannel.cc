@@ -127,17 +127,14 @@ private:
 
       // Configuration updated to use the CAN_FD 
       err_mask = CAN_ERR_MASK;
-      m_IsCanFdUsed = 1 ;
-      if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_FD_FRAMES, &canfd_on, sizeof(canfd_on)) != 0)        // switch socket to CANFD mode
-      {
-        m_IsCanFdUsed = 0 ;
-        if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &err_mask, sizeof(err_mask)) != 0)
-          {
+
+      /* try to switch the socket into CAN FD mode */
+      setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_FD_FRAMES, &canfd_on, sizeof(canfd_on));
+    
+      if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &err_mask, sizeof(err_mask)) != 0) {
             goto on_error;
-          }
-      }
-
-
+      }  
+      
       memset(&m_SocketAddr, 0, sizeof(m_SocketAddr));
       m_SocketAddr.can_family = PF_CAN;
       m_SocketAddr.can_ifindex = ifr.ifr_ifindex;
@@ -550,7 +547,6 @@ private:
 
   int m_SocketFd;
   struct sockaddr_can m_SocketAddr;
-  int m_IsCanFdUsed=0;
 
   bool m_ThreadStopRequested;
   bool m_TimestampsSupported;
@@ -678,12 +674,10 @@ private:
   {
     Nan::HandleScope scope;
 
-    struct canfd_frame framefd;         // for CANFD frame
-    struct can_frame frame;             // for CAN frame
+    struct canfd_frame framefd;
     
     unsigned int framesProcessed = 0;
     
-    if (m_IsCanFdUsed){
       while (recv(m_SocketFd, &framefd, sizeof(struct canfd_frame), MSG_DONTWAIT) > 0)
       {
         Nan::TryCatch try_catch;
@@ -715,12 +709,8 @@ private:
         Nan::Set(obj, id_symbol, Nan::New(id));
 
         if (isEff)
-          Nan::Set(obj, ext_symbol, Nan::New(isEff));
+          Nan::Set(obj, ext_symbol, Nan::New(isEff));        
 
-        // add info on the canfd_symbol = 1 to inform about the type of frame receive.
-        Nan::Set(obj, canfd_symbol, Nan::New(1));;
-          
-          
         if (isErr)
           Nan::Set(obj, err_symbol, Nan::New(isErr));
 
@@ -743,68 +733,6 @@ private:
         if (++framesProcessed > MAX_FRAMES_PER_ASYNC_EVENT)
           break;
       }
-    }
-    else{
-      while (recv(m_SocketFd, &frame, sizeof(struct can_frame), MSG_DONTWAIT) > 0)      
-      {
-        Nan::TryCatch try_catch;
-
-        v8::Local<v8::Object> obj = Nan::New<v8::Object>();
-
-        canid_t id = frame.can_id;
-        bool isEff = frame.can_id & CAN_EFF_FLAG;
-        bool isRtr = frame.can_id & CAN_RTR_FLAG;
-        bool isErr = frame.can_id & CAN_ERR_FLAG;
-
-        id = isEff ? frame.can_id & CAN_EFF_MASK : frame.can_id & CAN_SFF_MASK;
-
-        v8::Local<v8::Value> argv[] = {
-          obj,
-        };
-
-        if (m_TimestampsSupported)
-        {
-          struct timeval tv;
-
-          if (likely(ioctl(m_SocketFd, SIOCGSTAMP, &tv) >= 0))
-          {
-            Nan::Set(obj, tssec_symbol, Nan::New((int32_t)tv.tv_sec));
-            Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)tv.tv_usec));
-          }
-        }
-
-        Nan::Set(obj, id_symbol, Nan::New(id));
-
-        if (isEff)
-          Nan::Set(obj, ext_symbol, Nan::New(isEff));
-
-        if (isRtr)
-          Nan::Set(obj, rtr_symbol, Nan::New(isRtr));
-          
-          Nan::Set(obj, canfd_symbol, Nan::New(0));;        // Inform that information received are not CAN_FD
-
-        if (isErr)
-          Nan::Set(obj, err_symbol, Nan::New(isErr));
-
-          Nan::Set(obj, data_symbol, Nan::CopyBuffer((char *)frame.data, frame.can_dlc & 0xf).ToLocalChecked()); 
-        
-        for (size_t i = 0; i < m_OnMessageListeners.size(); i++)
-        {
-          struct listener *listener = m_OnMessageListeners.at(i);
-           Nan::Callback callback(Nan::New(listener->callback));
-          if (listener->handle.IsEmpty())
-            callback.Call(1, argv);
-          else
-            callback.Call(Nan::New(listener->handle), 1, argv);
-        }
-
-        if (unlikely(try_catch.HasCaught()))
-          Nan::FatalException(try_catch);
-
-        if (++framesProcessed > MAX_FRAMES_PER_ASYNC_EVENT)
-          break;
-      }     
-    }
     pthread_mutex_lock(&m_ReadPendingMtx);
 
     m_ReadPending = false;
