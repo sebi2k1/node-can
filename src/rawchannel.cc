@@ -133,7 +133,7 @@ private:
     
       if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &err_mask, sizeof(err_mask)) != 0)
         goto on_error;
-      
+
       memset(&m_SocketAddr, 0, sizeof(m_SocketAddr));
       m_SocketAddr.can_family = PF_CAN;
       m_SocketAddr.can_ifindex = ifr.ifr_ifindex;
