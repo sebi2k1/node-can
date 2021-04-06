@@ -4,10 +4,10 @@ node_js:
   - '10'
   - '12'
   - '13'
-dist: xenial
+dist: focal
 install:
   - sudo apt-get install -y can-utils
-  - sudo apt-get install -y nodejs-dev
+  - sudo apt-get install -y libnode-dev
   - sudo apt-get install linux-modules-extra-$(uname -r)
 before_script:
   - npm install -g mocha
