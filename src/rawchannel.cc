@@ -1,5 +1,6 @@
 /* Copyright Sebastian Haas <sebastian@sebastianhaas.info>. All rights reserved.
  * Updated for NodeJS 4.X using NAN by Daniel Gross <dgross@intronik.de>
+ * CANFD support by Tournabien Guillaume (@guillaumetournabien)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -319,7 +320,6 @@ on_error:
     v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
     v8::Local<v8::Object> obj = Nan::To<Object>(info[0]).ToLocalChecked();
 
-    // TODO: Check for correct structure of message object
     frame.can_id = obj->Get(context, id_symbol).ToLocalChecked()->ToUint32(context).ToLocalChecked()->Value();
 
     if (obj->Get(context, ext_symbol).ToLocalChecked()->IsTrue())
@@ -336,9 +336,11 @@ on_error:
     frame.can_dlc = node::Buffer::Length(Nan::To<Object>(dataArg).ToLocalChecked());
     memcpy(frame.data, node::Buffer::Data(Nan::To<Object>(dataArg).ToLocalChecked()), frame.can_dlc);
 
-    { // set time stamp when sending data
+    // Set time stamp when sending data
+    {
       struct timeval now;
-      if ( 0==gettimeofday(&now, 0)) {
+
+      if (gettimeofday(&now, 0) == 0) {
         Nan::Set(obj, tssec_symbol, Nan::New((int32_t)now.tv_sec));
         Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)now.tv_usec));
       }
@@ -355,14 +357,14 @@ on_error:
   }
 
  /**
-   * Send a CAN_FD message immediately.
+   * Send a CAN FD message immediately.
    *
    * PLEASE NOTE: By default, this function may block if the Tx buffer is not available. Please use
    * createRawChannelWithOptions({non_block_send: false}) to get non-blocking sending activated.
    *
-   * Note : All the setup is not supported and no protection are included
+   * PLEASE NOTE: Might fail if underlying device doesnt support CAN FD. Structure is not yet validated.
    * 
-   * @method send
+   * @method sendFD
    * @param message {Object} JSON object describing the CAN message, keys are id, length, data {Buffer}, ext
    */
   static NAN_METHOD(SendFD)
@@ -373,16 +375,13 @@ on_error:
     CHECK_CONDITION(info[0]->IsObject(), "First argument must be an Object");
     CHECK_CONDITION(hw->IsValid(), "Invalid channel!");
     struct canfd_frame frameFD;                         
-    frameFD.flags = 0;                                  // Flags not used on the function
+    frameFD.flags = 0; // Flags not used in this function
 
     v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
     v8::Local<v8::Object> obj = Nan::To<Object>(info[0]).ToLocalChecked();
 
-    // CAN FD FRAME
-    // ---------------
-    // TODO: Check for correct structure of message object
-
     frameFD.can_id = obj->Get(context, id_symbol).ToLocalChecked()->ToUint32(context).ToLocalChecked()->Value();
+
     if (obj->Get(context, ext_symbol).ToLocalChecked()->IsTrue())
       frameFD.can_id  |= CAN_EFF_FLAG;
 
@@ -395,15 +394,18 @@ on_error:
     memset(frameFD.data,0,sizeof(frameFD.data));
     memcpy(frameFD.data, node::Buffer::Data(Nan::To<Object>(dataArg).ToLocalChecked()), frameFD.len);
 
-    { // set time stamp when sending data
+    // Set time stamp when sending data
+    {
       struct timeval now;
-      if ( 0==gettimeofday(&now, 0)) {
+
+      if (gettimeofday(&now, 0) == 0) {
         Nan::Set(obj, tssec_symbol, Nan::New((int32_t)now.tv_sec));
         Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)now.tv_usec));
       }
     }
 
-    /* ensure discrete CAN FD length values 0..8, 12, 16, 20, 24, 32, 48, 64 bytes cf ISO11898-1*/
+    // Ensure discrete CAN FD length values 0..8, 12, 16, 20, 24, 32, 48, 64 bytes cf ISO11898-1
+    // See candump.c in can-utils package!
     static const unsigned char len2dlc[] = {0, 1, 2, 3, 4, 5, 6, 7, 8,		/* 0 - 8 */
         12, 12, 12, 12,				                                            /* 9 - 12 */
         16, 16, 16, 16,				                                            /* 13 - 16 */
@@ -412,16 +414,22 @@ on_error:
         32, 32, 32, 32, 32, 32, 32, 32,		                                /* 25 - 32 */
         48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48,		/* 33 - 48 */
         64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64};	/* 49 - 64 */      
-    if ( frameFD.len > 64) 
+
+    if (frameFD.len > 64) 
       frameFD.len = 64;
+
     frameFD.len = len2dlc[frameFD.len];
     
     int flags = 0;
+
     if (hw->m_NonBlockingSend)
       flags = MSG_DONTWAIT;
-    int i = send(hw->m_SocketFd,&frameFD,sizeof(struct canfd_frame),flags); 
+
+    int i = send(hw->m_SocketFd, &frameFD, sizeof(struct canfd_frame), flags); 
+
     info.GetReturnValue().Set(i);
   }
+
   /**
    * Set a list of active filters to be applied for incoming messages
    * @method setRxFilters
