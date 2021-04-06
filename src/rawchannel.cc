@@ -63,9 +63,10 @@ using namespace v8;
 #define rtr_symbol      SYMBOL("rtr")
 #define err_symbol      SYMBOL("err")
 #define data_symbol     SYMBOL("data")
+#define canfd_symbol    SYMBOL("canfd")        
 
 /**
- * Basic CAN access
+ * Basic CAN & CAN_FD access
  * @module CAN
  */
 
@@ -94,6 +95,7 @@ public:
     Nan::SetPrototypeMethod(tpl, "start",           Start);
     Nan::SetPrototypeMethod(tpl, "stop",            Stop);
     Nan::SetPrototypeMethod(tpl, "send",            Send);
+    Nan::SetPrototypeMethod(tpl, "sendFD",          SendFD);
     Nan::SetPrototypeMethod(tpl, "setRxFilters",    SetRxFilters);
     Nan::SetPrototypeMethod(tpl, "setErrorFilters", SetErrorFilters);
     Nan::SetPrototypeMethod(tpl, "disableLoopback", DisableLoopback);
@@ -107,6 +109,7 @@ private:
   explicit RawChannel(const char *name, bool timestamps, int protocol, bool non_block_send)
     : m_Thread(0), m_Name(name), m_SocketFd(-1)
   {
+    const int canfd_on = 1;
     m_SocketFd = socket(PF_CAN, SOCK_RAW, protocol);
     m_ThreadStopRequested = false;
     m_TimestampsSupported = timestamps;
@@ -123,6 +126,10 @@ private:
         goto on_error;
 
       err_mask = CAN_ERR_MASK;
+
+      /* try to switch the socket into CAN FD mode */
+      setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_FD_FRAMES, &canfd_on, sizeof(canfd_on));
+
       if (setsockopt(m_SocketFd, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &err_mask, sizeof(err_mask)) != 0)
         goto on_error;
 
@@ -140,7 +147,7 @@ private:
 
       return;
 
-    on_error:
+      on_error:
       close(m_SocketFd);
       m_SocketFd = -1;
     }
@@ -347,6 +354,74 @@ on_error:
     info.GetReturnValue().Set(i);
   }
 
+ /**
+   * Send a CAN_FD message immediately.
+   *
+   * PLEASE NOTE: By default, this function may block if the Tx buffer is not available. Please use
+   * createRawChannelWithOptions({non_block_send: false}) to get non-blocking sending activated.
+   *
+   * Note : All the setup is not supported and no protection are included
+   * 
+   * @method send
+   * @param message {Object} JSON object describing the CAN message, keys are id, length, data {Buffer}, ext
+   */
+  static NAN_METHOD(SendFD)
+  {
+    RawChannel* hw = ObjectWrap::Unwrap<RawChannel>(info.Holder());
+
+    CHECK_CONDITION(info.Length() >= 1, "Invalid arguments");
+    CHECK_CONDITION(info[0]->IsObject(), "First argument must be an Object");
+    CHECK_CONDITION(hw->IsValid(), "Invalid channel!");
+    struct canfd_frame frameFD;                         
+    frameFD.flags = 0;                                  // Flags not used on the function
+
+    v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
+    v8::Local<v8::Object> obj = Nan::To<Object>(info[0]).ToLocalChecked();
+
+    // CAN FD FRAME
+    // ---------------
+    // TODO: Check for correct structure of message object
+
+    frameFD.can_id = obj->Get(context, id_symbol).ToLocalChecked()->ToUint32(context).ToLocalChecked()->Value();
+    if (obj->Get(context, ext_symbol).ToLocalChecked()->IsTrue())
+      frameFD.can_id  |= CAN_EFF_FLAG;
+
+    v8::Local<v8::Value> dataArg = obj->Get(context, data_symbol).ToLocalChecked();
+
+    CHECK_CONDITION(node::Buffer::HasInstance(dataArg), "Data field must be a Buffer");
+
+    // Get frame data
+    frameFD.len = node::Buffer::Length(Nan::To<Object>(dataArg).ToLocalChecked()); 
+    memset(frameFD.data,0,sizeof(frameFD.data));
+    memcpy(frameFD.data, node::Buffer::Data(Nan::To<Object>(dataArg).ToLocalChecked()), frameFD.len);
+
+    { // set time stamp when sending data
+      struct timeval now;
+      if ( 0==gettimeofday(&now, 0)) {
+        Nan::Set(obj, tssec_symbol, Nan::New((int32_t)now.tv_sec));
+        Nan::Set(obj, tsusec_symbol, Nan::New((int32_t)now.tv_usec));
+      }
+    }
+
+    /* ensure discrete CAN FD length values 0..8, 12, 16, 20, 24, 32, 48, 64 bytes cf ISO11898-1*/
+    static const unsigned char len2dlc[] = {0, 1, 2, 3, 4, 5, 6, 7, 8,		/* 0 - 8 */
+        12, 12, 12, 12,				                                            /* 9 - 12 */
+        16, 16, 16, 16,				                                            /* 13 - 16 */
+        20, 20, 20, 20,				                                            /* 17 - 20 */
+        24, 24, 24, 24,				                                            /* 21 - 24 */
+        32, 32, 32, 32, 32, 32, 32, 32,		                                /* 25 - 32 */
+        48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48,		/* 33 - 48 */
+        64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64};	/* 49 - 64 */      
+    if ( frameFD.len > 64) 
+      frameFD.len = 64;
+    frameFD.len = len2dlc[frameFD.len];
+    
+    int flags = 0;
+    if (hw->m_NonBlockingSend)
+      flags = MSG_DONTWAIT;
+    int i = send(hw->m_SocketFd,&frameFD,sizeof(struct canfd_frame),flags); 
+    info.GetReturnValue().Set(i);
+  }
   /**
    * Set a list of active filters to be applied for incoming messages
    * @method setRxFilters
@@ -599,11 +674,11 @@ private:
   {
     Nan::HandleScope scope;
 
-    struct can_frame frame;
+    struct canfd_frame frame;
 
     unsigned int framesProcessed = 0;
 
-    while (recv(m_SocketFd, &frame, sizeof(struct can_frame), MSG_DONTWAIT) > 0)
+    while (recv(m_SocketFd, &frame, sizeof(struct canfd_frame), MSG_DONTWAIT) > 0)
     {
       Nan::TryCatch try_catch;
 
@@ -642,7 +717,7 @@ private:
       if (isErr)
         Nan::Set(obj, err_symbol, Nan::New(isErr));
 
-      Nan::Set(obj, data_symbol, Nan::CopyBuffer((char *)frame.data, frame.can_dlc & 0xf).ToLocalChecked());
+      Nan::Set(obj, data_symbol, Nan::CopyBuffer((char *)frame.data, frame.len & 0x7f).ToLocalChecked());
 
       for (size_t i = 0; i < m_OnMessageListeners.size(); i++)
       {
