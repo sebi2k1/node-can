@@ -1,11 +1,11 @@
 {
-  "name": "socketcan",
+  "name": "@tot/socketcan",
+  "version": "3.0.2",
   "author": {
     "name": "Sebastian Haas",
     "email": "sebastian@sebastianhaas.info"
   },
   "description": "A SocketCAN abstraction layer for NodeJS.",
-  "version": "3.0.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -31,8 +31,5 @@
     "nan": "*",
     "xml2js": ">=0.2.0"
   },
-  "main": "socketcan.js",
-  "os": [
-    "linux"
-  ]
+  "main": "socketcan.js"
 }
