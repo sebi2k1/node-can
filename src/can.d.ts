@@ -1,6 +1,6 @@
 declare module "can" {
 
-    declare interface OutgoingMessage {
+    declare interface Message {
         id: number,
         ext: boolean,
         rtr: boolean,
@@ -40,7 +40,7 @@ declare module "can" {
          * @method send
          * @param message {Object} JSON object describing the CAN message, keys are id, length, data {Buffer}, ext or rtr
          */
-        send(message: OutgoingMessage);
+        send(message: Message);
 
         /**
          * Send a CAN FD message immediately.
@@ -53,7 +53,7 @@ declare module "can" {
          * @method sendFD
          * @param message {Object} JSON object describing the CAN message, keys are id, length, data {Buffer}, ext
          */
-        sendFD(message: OutgoingMessage);
+        sendFD(message: Message);
 
         /**
          * Set a list of active filters to be applied for incoming messages
