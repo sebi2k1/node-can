@@ -302,8 +302,8 @@ class DatabaseService {
          */
         this.messages = [];
 
-        for (const i in db_desc['messages']) {
-            var m = db_desc['messages'][i];
+        for (const i in db_desc.messages) {
+            var m = db_desc.messages[i];
             var id = m.id | (m.ext ? 1 : 0) << 31;
 
             var nm = new Message(m);

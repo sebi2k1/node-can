@@ -72,10 +72,10 @@ export class Value {
 export class Signal {
     constructor(
         public name: string,
-        public bitLength: number,
-        public endianess: 'little' | 'big',
         public spn: string,
         public bitOffset: number,
+        public bitLength: number,
+        public endianess: 'little' | 'big',
         public labels: Record<number, string>,
         public value?: Value,
     ) {}
@@ -141,10 +141,10 @@ function makeSignalFromXml(xmlSignal: Record<string, any>, xmlValue: any, labels
 
     const newSignal = new Signal(
         xmlSignal.name,
-        xmlSignal.length ? parseInt(xmlSignal.length) : 1,
-        xmlSignal.endianess ? xmlSignal.endianess : 'little',
         xmlSignal.spn,
         bitOffset,
+        xmlSignal.length ? parseInt(xmlSignal.length) : 1,
+        xmlSignal.endianess ? xmlSignal.endianess : 'little',
         labelSet,
         value,
     );
