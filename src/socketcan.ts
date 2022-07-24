@@ -22,7 +22,7 @@
 //-----------------------------------------------------------------------------
 // CAN-Object
 
-import {RawChannel} from 'can';
+import * as can from 'can';
 
 //-----------------------------------------------------------------------------
 /**
@@ -32,7 +32,7 @@ import {RawChannel} from 'can';
  */
  import * as _signals from 'can_signals';
 
- import { Bus } from './parse_kcd';
+ import * as kcd from './parse_kcd';
 
 /**
  * @method createRawChannel
@@ -42,9 +42,9 @@ import {RawChannel} from 'can';
  * @return {RawChannel} a new channel object or exception
  * @for exports
  */
-export function createRawChannel(channel: string, timestamps: boolean, protocol: number): RawChannel
+export function createRawChannel(channel: string, timestamps: boolean, protocol: number): can.RawChannel
 {
-    return new RawChannel(channel, timestamps, protocol, false);
+    return new can.RawChannel(channel, timestamps, protocol, false);
 }
 
 interface ChannelOptions {
@@ -60,7 +60,7 @@ interface ChannelOptions {
  * @return {RawChannel} a new channel object or exception
  * @for exports
  */
-function createRawChannelWithOptions(channel: string, options: ChannelOptions): RawChannel
+function createRawChannelWithOptions(channel: string, options: ChannelOptions): can.RawChannel
 {
     if (options === undefined) options = {}
 
@@ -68,7 +68,7 @@ function createRawChannelWithOptions(channel: string, options: ChannelOptions): 
     if (options.protocol === undefined) options.protocol = 1; /* CAN RAW */
     if (options.non_block_send === undefined) options.non_block_send = false;
 
-    return new RawChannel(channel, options.timestamps, options.protocol, options.non_block_send);
+    return new can.RawChannel(channel, options.timestamps, options.protocol, options.non_block_send);
 }
 
 /**
@@ -77,48 +77,39 @@ function createRawChannelWithOptions(channel: string, options: ChannelOptions): 
  */
 class Signal
 {
-    constructor(desc) {
+    readonly name: string;
+    readonly spn: string;
+    readonly bitOffset: number;
+    readonly bitLength: number;
+    readonly endianess: 'little' | 'big';
+    readonly labels: Record<number, string>;
+    readonly value?: kcd.Value;
+
+    public currentValue?: number = undefined;
+
+    public changeListeners: CallableFunction[] = [];
+    public updateListeners: CallableFunction[] = [];
+
+    constructor(desc: kcd.Signal) {
         /**
          * Symbolic name
          * @attribute name
          * @final
          */
-        this.name = desc['name'];
-        this.spn = desc['spn'];
+        this.name = desc.name;
+        this.spn = desc.spn;
 
-        this.bitOffset = desc['bitOffset'];
-        this.bitLength = desc['bitLength'];
-        this.endianess = desc['endianess'];
-        this.type = desc['type'];
+        this.bitOffset = desc.bitOffset;
+        this.bitLength = desc.bitLength;
+        this.endianess = desc.endianess;
 
-        this.intercept = desc['intercept'];
-        this.slope = desc['slope'];
-
-        this.minValue = desc['minValue'];
-        this.maxValue = desc['maxValue'];
-
-        this.unit = desc['unit'];
-
-        /**
-         * Label set for defined states of the signal.
-         */
-        this.labels = desc['labels'];
+        this.value = desc.value;
+        this.labels = desc.labels;
 
         /**
          * this will allow triggering on mux'ed message ids.
          */
         this.muxGroup = [ desc['mux'] ];
-
-        /**
-         * Current value
-         *
-         * @attribute value
-         * @final
-         */
-        this.value = null;
-
-        this.changelisteners = [];
-        this.updateListeners = [];
     }
 
     /**
@@ -127,8 +118,8 @@ class Signal
      * @param listener JS callback to get notification
      * @for Signal
      */
-    onChange(listener) {
-        this.changelisteners.push(listener);
+    onChange(listener: CallableFunction) {
+        this.changeListeners.push(listener);
         return listener;
     }
 
@@ -138,7 +129,7 @@ class Signal
      * @param listener JS callback to get notification
      * @for Signal
      */
-    onUpdate(listener) {
+    onUpdate(listener: CallableFunction) {
         this.updateListeners.push(listener);
         return listener;
     }
@@ -149,9 +140,9 @@ class Signal
      * @param listener to be removed
      * @for Signal
      */
-    removeListener(listener) {
-        var idx = this.changelisteners.indexOf(listener);
-        if (idx >= 0) this.changelisteners.splice(idx, 1);
+    removeListener(listener: CallableFunction) {
+        var idx = this.changeListeners.indexOf(listener);
+        if (idx >= 0) this.changeListeners.splice(idx, 1);
         idx = this.updateListeners.indexOf(listener);
         if (idx >= 0) this.updateListeners.splice(idx, 1);
     }
@@ -164,31 +155,36 @@ class Signal
      * @param newValue {bool|double|integer} New value to set
      * @for Signal
      */
-    update(newValue) {
+    update(newValue: number) {
 
-        if (newValue > this.maxValue) {
-            console.error("ERROR : " + this.name + " value= " + newValue
-                    + " is outof bounds  > " + this.maxValue);
-        } else if (newValue < this.minValue) {
-            console.error("ERROR : " + this.name + " value= " + newValue
-                    + " is outof bounds  < " + this.minValue);
+        if (this.value) {
+            // TODO: Move this block to a `Value.isValid(v)` function?
+            if (this.value.maxValue && newValue > this.value.maxValue) {
+                console.error("ERROR : " + this.name + " value= " + newValue
+                        + " is outof bounds  > " + this.value.maxValue);
+            }
+
+            if (this.value.minValue && newValue < this.value.minValue) {
+                console.error("ERROR : " + this.name + " value= " + newValue
+                        + " is outof bounds  < " + this.value.minValue);
+            }
         }
 
-        var changed = this.value !== newValue;
-        this.value = newValue;
+        var changed = this.currentValue !== newValue;
+        this.currentValue = newValue;
 
         // Update all updateListeners, that the signal updated
-        for (f in this.updateListeners) {
-            this.updateListeners[f](this);
-        }
+        this.updateListeners.forEach((listener) => {
+            listener(this);
+        });
 
         // Nothing changed
         if (!changed) return;
 
         // Update all changelisteners, that the signal changed
-        for (f in this.changelisteners) {
-            this.changelisteners[f](this);
-        }
+        this.changeListeners.forEach((listener) => {
+            listener(this);
+        });
     }
 }
 
@@ -201,27 +197,36 @@ class Signal
  */
 class Message
 {
-    constructor(desc) {
+    readonly id: number;
+    readonly name: string;
+    readonly ext: boolean;
+    readonly len: number;
+    readonly interval: number;
+    readonly muxed: boolean;
+    readonly mux: undefined;
+    readonly signals: Record<string, Signal> = {};
+
+    constructor(msgDef: kcd.Message) {
         /**
          * CAN identifier
          * @attribute id
          * @final
          */
-        this.id = desc.id;
+        this.id = msgDef.id;
 
         /**
          * Extended Frame Format used
          * @attribute ext
          * @final
          */
-        this.ext = desc.ext;
+        this.ext = msgDef.ext;
 
         /**
          * Symbolic name
          * @attribute name
          * @final
          */
-        this.name = desc.name;
+        this.name = msgDef.name;
 
         /**
          * Length in bytes of resulting CAN message
@@ -229,7 +234,7 @@ class Message
          * @attribute len
          * @final
          */
-        this.len = desc.length;
+        this.len = msgDef.length;
 
         /**
          * This is the time frame that the message gets generated
@@ -237,7 +242,7 @@ class Message
          * @attribute interval
          * @final
          */
-        this.interval = desc.interval;
+        this.interval = msgDef.interval;
 
         /**
          * This tells us the message is mutliplexed.
@@ -245,7 +250,7 @@ class Message
          * @attribute muxed
          * @final
          */
-        this.muxed = desc.muxed;
+        this.muxed = msgDef.muxed;
 
         /**
          * Multiplexor parameter (just one supported right now).
@@ -253,25 +258,16 @@ class Message
          * @attribute mux
          * @final
          */
-        this.mux = desc.mux;
+        this.mux = msgDef.mux;
 
         /**
          * Named information to inform that the frame is CAN_FD format .
          * @attribute Boolean
          * @final
          */
-        this.canfd = desc.canfd;
+        this.canfd = msgDef.canfd;
 
-        /**
-         * Named array of signals within this message. Accessible via index and name.
-         * @attribute {Signal} signals
-         * @final
-         */
-        this.signals = [];
-
-        for (i in desc['signals']) {
-            var s = desc['signals'][i];
-
+        msgDef.signals.forEach((s) => {
             if (this.signals[s.name] && this.signals[s.name].muxGroup) {
                 this.signals[s.name].muxGroup.push(s.mux);
             } else {
@@ -294,29 +290,23 @@ class Message
  * @for DatabaseService
  */
 class DatabaseService {
-    constructor(private channel: RawChannel, db_desc: Bus) {
+    readonly messages: Record<string, Message> = {};
+    constructor(private channel: can.RawChannel, busDef: kcd.Bus) {
 
-        /**
-         * Named array of known messages. Accessible via index and name.
-         * @attribute {Message} messages
-         */
-        this.messages = [];
+        busDef.messages.forEach((m) => {
+            const id = m.id | (m.ext ? 1 : 0) << 31;
 
-        for (const i in db_desc.messages) {
-            var m = db_desc.messages[i];
-            var id = m.id | (m.ext ? 1 : 0) << 31;
-
-            var nm = new Message(m);
+            const nm = new Message(m);
             this.messages[id] = nm;
             this.messages[m.name] = nm;
-        }
+        });
 
         // Subscribe to any incoming messages
         channel.addListener("onMessage", this.onMessage, this);
     }
 
     // Callback for incoming messages
-    onMessage(msg) {
+    onMessage(msg: can.Message) {
         if (msg == undefined)
             return;
 
@@ -324,9 +314,9 @@ class DatabaseService {
         if (msg.rtr)
             return;
 
-        id = msg.id | (msg.ext ? 1 : 0) << 31;
+        const id = msg.id | (msg.ext ? 1 : 0) << 31;
 
-        var m = this.messages[id];
+        const m = this.messages[id];
 
         if (!m) {
             return;
@@ -349,16 +339,16 @@ class DatabaseService {
                 continue;
             }
 
-            var ret = _signals.decodeSignal(msg.data, s.bitOffset, s.bitLength,
-                    s.endianess == 'little', s.type == 'signed');
+            const ret = _signals.decodeSignal(msg.data, s.bitOffset, s.bitLength,
+                    s.endianess == 'little', s.value.type == 'signed');
 
-            var val = ret[0] + (ret[1] << 32)
+            let val = ret[0] + (ret[1] << 32)
 
-            if (s.slope)
-                val *= s.slope;
+            if (s.value.slope)
+                val *= s.value.slope;
 
-            if (s.intercept)
-                val += s.intercept;
+            if (s.value.intercept)
+                val += s.value.intercept;
 
             s.update(val);
         }
@@ -384,7 +374,8 @@ class DatabaseService {
             id: m.id,
             ext: m.ext,
             rtr: false,
-            data : (m.len > 0 && m.len < 64) ? Buffer.alloc(m.len) : Buffer.alloc(64)         // for CANFD data buffer 64 bytes
+            // for CANFD data buffer 64 bytes
+            data : (m.len > 0 && m.len < 64) ? Buffer.alloc(m.len) : Buffer.alloc(64)
         };
 
         canmsg.data.fill(0); // should be 0xFF for j1939 message def.
@@ -392,9 +383,7 @@ class DatabaseService {
         if (mux)
             _signals.encodeSignal(canmsg.data, m.mux.offset, m.mux.length, true, false, parseInt(mux, 16))
 
-        for (i in m.signals) {
-            var s = m.signals[i];
-
+        Object.values(m.signals).forEach((s) => {
             if (s.value == undefined)
                 continue;
 
@@ -404,32 +393,34 @@ class DatabaseService {
                 }
             }
 
-            var val = s.value;
+            let val = s.currentValue!;
 
             // Apply factor/intercept and convert to Integer
-            if (s.intercept)
-                val -= s.intercept;
+            if (s.value) {
+                val -= s.value.intercept;
+                val /= s.value.slope;
+            }
 
-            if (s.slope)
-                val /= s.slope;
-
-            if (typeof(val) == 'double')
-                val = parseInt(Math.round(val));
+            // Make sure we are sending an integer because the division above could change it to a float.
+            val = Math.round(val);
 
             if (m.len == 0) {
                 return;
             }
 
-        var word1 = val & 0xFFFFFFFF
-        var word2 = 0
+            let word1 = val & 0xFFFFFFFF
+            let word2 = 0
 
-        // shift doesn't work above 32 bit, only do this if required to save cycles
-        if (val > 0xFFFFFFFF)
-          word2 = (val / Math.pow(2, 32))
+            // shift doesn't work above 32 bit, only do this if required to save cycles
+            if (val > 0xFFFFFFFF) {
+                word2 = (val / Math.pow(2, 32))
+            }
 
-            _signals.encodeSignal(canmsg.data, s.bitOffset, s.bitLength,
-          s.endianess == 'little', s.type == 'signed', word1, word2 );
-        }
+            _signals.encodeSignal(
+                canmsg.data, s.bitOffset, s.bitLength,
+                s.endianess == 'little', s.value!.type == 'signed', word1, word2
+            );
+        });
 
         this.channel.send(canmsg);
     }

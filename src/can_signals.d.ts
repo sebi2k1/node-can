@@ -27,6 +27,7 @@ declare module "can_signals" {
         bitLength: number,
         endianess: boolean,
         signed: boolean,
-        value: number | boolean,
+        word1: number | boolean,
+        word2?: number | boolean,
     ): void;
 }
