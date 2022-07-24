@@ -93,8 +93,9 @@ static u_int64_t _getvalue(u_int8_t * data,
 // Decode signal according description
 // arg[0] - Data array
 // arg[1] - offset zero indexed
-// arg[3] - bitLength one indexed
-// arg[4] - endianess
+// arg[2] - bitLength one indexed
+// arg[3] - endianess
+// arg[4] - signed flag
 NAN_METHOD(DecodeSignal)
 {
     u_int32_t offset, bitLength;
@@ -250,9 +251,9 @@ NAN_METHOD(EncodeSignal)
 
 NAN_MODULE_INIT(InitAll)
 {
-  Nan::Set(target, Nan::New<String>("decode_signal").ToLocalChecked(),
+  Nan::Set(target, Nan::New<String>("decodeSignal").ToLocalChecked(),
     Nan::GetFunction(Nan::New<FunctionTemplate>(DecodeSignal)).ToLocalChecked());
-  Nan::Set(target, Nan::New<String>("encode_signal").ToLocalChecked(),
+  Nan::Set(target, Nan::New<String>("encodeSignal").ToLocalChecked(),
     Nan::GetFunction(Nan::New<FunctionTemplate>(EncodeSignal)).ToLocalChecked());
 }
 
