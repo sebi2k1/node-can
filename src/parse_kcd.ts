@@ -50,6 +50,7 @@ export class J1939 {
 
 export class Node {
     constructor(
+        public id: number,
         public name: string,
         public buses: object,
         public device: object,
@@ -81,8 +82,13 @@ export class Signal {
     ) {}
 }
 
+export class NodeRef {
+
+}
+
 export class Message {
     public signals: Signal[] = [];
+    public producers: NodeRef[] = [];
 
     constructor(
         public name: string,
@@ -167,6 +173,7 @@ export function parseKcdFile(file: fs.PathOrFileDescriptor) {
             const rawNode = networkDefinition['Node'][n]['$'];
 
             const newNode = new Node(
+                rawNode['id'],
                 rawNode['name'],
                 {},
                 rawNode['device'],
@@ -185,8 +192,9 @@ export function parseKcdFile(file: fs.PathOrFileDescriptor) {
         }
 
         for (const b in networkDefinition['Bus']) {
-            var rawBus = networkDefinition['Bus'][b]['$'];
+            const rawBus = networkDefinition['Bus'][b]['$'];
 
+            const busName = rawBus['name'];
             const newBus = new Bus();
 
             const rawBusMessages = networkDefinition['Bus'][b]['Message'];
@@ -209,15 +217,21 @@ export function parseKcdFile(file: fs.PathOrFileDescriptor) {
 
                 // Add messages going out and from whom.
                 for (const p in producers) {
-                    for (const n in producers[p]['NodeRef']) {
-                        var id = producers[p]['NodeRef'][n]['$']['id'];
+                    const nodeRefs = producers[p]['NodeRef'];
+                    for (const n in nodeRefs) {
+                        const nodeRefId: string = nodeRefs[n]['$']['id'];
 
-                        if (network.nodes[id])
+                        message.producers.push(nodeRefId);
+
+                        const nodeDef = network.nodes[nodeRefId];
+
+                        if (nodeDef)
                         {
-                            if (network.nodes[id].buses[rawBus['name']] == undefined)
-                                network.nodes[id].buses[rawBus['name']] = { produces: [], consumes: []}
+                            if (nodeDef.buses[busName] == undefined) {
+                                nodeDef.buses[busName] = { produces: [], consumes: []}
+                            }
 
-                            network.nodes[id].buses[rawBus['name']].produces.push(newMessage.id);
+                            nodeDef.buses[busName].produces.push(newMessage.id);
                         }
                     }
                 }
@@ -276,10 +290,10 @@ export function parseKcdFile(file: fs.PathOrFileDescriptor) {
 
                             if (network.nodes[id])
                             {
-                                if (network.nodes[id].buses[rawBus['name']] == undefined)
-                                    network.nodes[id].buses[rawBus['name']] = { produces: [], consumes: []}
+                                if (network.nodes[id].buses[busName] == undefined)
+                                    network.nodes[id].buses[busName] = { produces: [], consumes: []}
 
-                                network.nodes[id].buses[rawBus['name']].consumes.push({ id: newMessage.id, signal_name: newSignal.name });
+                                network.nodes[id].buses[busName].consumes.push({ id: newMessage.id, signal_name: newSignal.name });
                             }
                         }
                     }
@@ -303,7 +317,7 @@ export function parseKcdFile(file: fs.PathOrFileDescriptor) {
                 newBus.messages.push(newMessage);
             }
 
-            network.buses[rawBus['name']] = newBus;
+            network.buses[busName] = newBus;
         }
     });
 
