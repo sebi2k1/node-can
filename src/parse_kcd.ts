@@ -48,11 +48,17 @@ export class J1939 {
     }
 }
 
+export class BusRefs {
+    public produces: number[] = [];
+    public consumes: number[] = [];
+}
+
 export class Node {
+    public buses: Record<string, BusRefs> = {};
+
     constructor(
         public id: number,
         public name: string,
-        public buses: object,
         public device: object,
         public j1939: J1939,
     ) {}
@@ -83,7 +89,9 @@ export class Signal {
 }
 
 export class NodeRef {
-
+    constructor(
+        public id: number
+    ) {}
 }
 
 export class Message {
@@ -175,7 +183,6 @@ export function parseKcdFile(file: fs.PathOrFileDescriptor) {
             const newNode = new Node(
                 rawNode['id'],
                 rawNode['name'],
-                {},
                 rawNode['device'],
                 new J1939(
                     rawNode['J1939AAC'],
@@ -194,7 +201,7 @@ export function parseKcdFile(file: fs.PathOrFileDescriptor) {
         for (const b in networkDefinition['Bus']) {
             const rawBus = networkDefinition['Bus'][b]['$'];
 
-            const busName = rawBus['name'];
+            const busName: string = rawBus['name'];
             const newBus = new Bus();
 
             const rawBusMessages = networkDefinition['Bus'][b]['Message'];
@@ -219,19 +226,17 @@ export function parseKcdFile(file: fs.PathOrFileDescriptor) {
                 for (const p in producers) {
                     const nodeRefs = producers[p]['NodeRef'];
                     for (const n in nodeRefs) {
-                        const nodeRefId: string = nodeRefs[n]['$']['id'];
+                        const nodeRefId: number = nodeRefs[n]['$']['id'];
 
-                        message.producers.push(nodeRefId);
+                        message.producers.push(new NodeRef(nodeRefId));
 
-                        const nodeDef = network.nodes[nodeRefId];
+                        // Look up the node by _id_ (number), not name.
+                        const nodeDef: Node = network.nodes[nodeRefId];
 
                         if (nodeDef)
                         {
-                            if (nodeDef.buses[busName] == undefined) {
-                                nodeDef.buses[busName] = { produces: [], consumes: []}
-                            }
-
-                            nodeDef.buses[busName].produces.push(newMessage.id);
+                            const bus = nodeDef.buses[busName];
+                            bus.produces.push(newMessage.id);
                         }
                     }
                 }
