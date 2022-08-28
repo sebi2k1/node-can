@@ -44,8 +44,8 @@ import * as kcd from "./parse_kcd";
  */
 export function createRawChannel(
 	channel: string,
-	timestamps: boolean,
-	protocol: number
+	timestamps?: boolean,
+	protocol?: number
 ): can.RawChannel {
 	return new can.RawChannel(channel, timestamps, protocol, false);
 }

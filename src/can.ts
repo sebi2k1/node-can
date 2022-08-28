@@ -81,8 +81,8 @@ const can = require("../build/Release/can");
 export var RawChannel: {
 	new (
 		name: string,
-		timestamps: boolean,
-		protocol: number,
-		non_block_send: boolean
+		timestamps?: boolean,
+		protocol?: number,
+		non_block_send?: boolean
 	): RawChannel;
 } = can.RawChannel;
