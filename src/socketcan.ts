@@ -85,7 +85,7 @@ export function createRawChannelWithOptions(
  * The actual signal.
  * @class Signal
  */
-class Signal {
+export class Signal {
 	readonly name: string;
 	readonly spn: string;
 	readonly bitOffset: number;
@@ -214,7 +214,7 @@ class Signal {
  * Just a container to keep the Signals.
  * @class Message
  */
-class Message {
+export class Message {
 	readonly id: number;
 	readonly name: string;
 	readonly ext: boolean;
@@ -306,7 +306,7 @@ class Message {
  * @return a new DatabaseService
  * @for DatabaseService
  */
-class DatabaseService {
+export class DatabaseService {
 	readonly messages: Record<string, Message> = {};
 	constructor(private channel: can.RawChannel, busDef: kcd.Bus) {
 		busDef.messages.forEach((m) => {
@@ -466,5 +466,4 @@ class DatabaseService {
  * @return DB description to be used in DatabaseService
  * @for exports
  */
-exports.parseNetworkDescription = kcd.parseKcdFile;
-exports.DatabaseService = DatabaseService;
+export const parseNetworkDescription = kcd.parseKcdFile;
