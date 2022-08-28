@@ -8,5 +8,5 @@ module.exports = {
   slow: 75,
   timeout: 2000,
   ui: 'bdd',
-  'watch-files': ['*.js', 'src/*', 'test/*.js']
+  'watch-files': ['dist/*.js', 'src/*', 'test/*.js']
 };

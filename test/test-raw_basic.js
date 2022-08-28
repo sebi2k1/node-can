@@ -1,6 +1,6 @@
 var assert = require('assert')
 
-var can = require('../socketcan');
+var can = require('../dist/socketcan');
 var buffer = require('buffer');
 
 describe('RawChannel', function() {
@@ -13,7 +13,7 @@ describe('RawChannel', function() {
 
         done();
     });
-    
+
     it('should be able to create channel with optional parameters', function(done) {
         var channel = can.createRawChannel("vcan0", { timestamps: true, non_block_send: true });
 
@@ -43,9 +43,9 @@ describe('RawChannel', function() {
         channel.addListener("onStopped", function() {
             done();
         });
-        
+
         channel.start();
-        
+
         setTimeout(function() { channel.stop(); }, 100);
     });
 

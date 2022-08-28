@@ -16,10 +16,7 @@
     "sourceMap": true,
     "noEmitOnError": true,
     "outDir": "dist",
-    "paths": {
-        "can": ["./build/Release/can"],
-        "can_signals": ["./build/Release/can_signals"]
-    }
+    "paths": {}
   },
-  "include": ["src"]
+  "include": ["src", "native/can.d.ts"]
 }
