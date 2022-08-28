@@ -63,7 +63,7 @@ interface ChannelOptions {
  * @return {RawChannel} a new channel object or exception
  * @for exports
  */
-function createRawChannelWithOptions(
+export function createRawChannelWithOptions(
 	channel: string,
 	options: ChannelOptions
 ): can.RawChannel {
@@ -92,10 +92,10 @@ class Signal {
 	readonly bitLength: number;
 	readonly endianess: "little" | "big";
 	readonly labels: Record<number, string>;
-	readonly value?: kcd.Value;
+	readonly valueDetails?: kcd.Value;
 	readonly muxGroup: number[];
 
-	public currentValue?: number = undefined;
+	public value?: number = undefined;
 
 	public changeListeners: CallableFunction[] = [];
 	public updateListeners: CallableFunction[] = [];
@@ -113,7 +113,7 @@ class Signal {
 		this.bitLength = desc.bitLength;
 		this.endianess = desc.endianess;
 
-		this.value = desc.value;
+		this.valueDetails = desc.value;
 		this.labels = desc.labels;
 
 		/**
@@ -166,33 +166,33 @@ class Signal {
 	 * @for Signal
 	 */
 	update(newValue: number) {
-		if (this.value) {
+		if (this.valueDetails) {
 			// TODO: Move this block to a `Value.isValid(v)` function?
-			if (this.value.maxValue && newValue > this.value.maxValue) {
+			if (this.valueDetails.maxValue && newValue > this.valueDetails.maxValue) {
 				console.error(
 					"ERROR : " +
 						this.name +
 						" value= " +
 						newValue +
 						" is outof bounds  > " +
-						this.value.maxValue
+						this.valueDetails.maxValue
 				);
 			}
 
-			if (this.value.minValue && newValue < this.value.minValue) {
+			if (this.valueDetails.minValue && newValue < this.valueDetails.minValue) {
 				console.error(
 					"ERROR : " +
 						this.name +
 						" value= " +
 						newValue +
 						" is outof bounds  < " +
-						this.value.minValue
+						this.valueDetails.minValue
 				);
 			}
 		}
 
-		const changed = this.currentValue !== newValue;
-		this.currentValue = newValue;
+		const changed = this.value !== newValue;
+		this.value = newValue;
 
 		// Update all updateListeners, that the signal updated
 		this.updateListeners.forEach((listener) => {
@@ -353,7 +353,7 @@ class DatabaseService {
 		for (const i in m.signals) {
 			const s = m.signals[i];
 
-			if (s.value === undefined) continue;
+			if (s.valueDetails === undefined) continue;
 
 			// if this is a mux signal and the muxor isnt in my list...
 			if (m.muxed && s.muxGroup.indexOf(mux_count) == -1) {
@@ -365,14 +365,14 @@ class DatabaseService {
 				s.bitOffset,
 				s.bitLength,
 				s.endianess == "little",
-				s.value.type == "signed"
+				s.valueDetails.type == "signed"
 			);
 
 			let val = ret[0] + (ret[1] << 32);
 
-			if (s.value.slope) val *= s.value.slope;
+			if (s.valueDetails.slope) val *= s.valueDetails.slope;
 
-			if (s.value.intercept) val += s.value.intercept;
+			if (s.valueDetails.intercept) val += s.valueDetails.intercept;
 
 			s.update(val);
 		}
@@ -414,7 +414,7 @@ class DatabaseService {
 			);
 
 		Object.values(m.signals).forEach((s) => {
-			if (s.value == undefined) return;
+			if (s.valueDetails == undefined) return;
 
 			if (mux) {
 				if (s.muxGroup.indexOf(parseInt(mux, 16)) === -1) {
@@ -422,12 +422,12 @@ class DatabaseService {
 				}
 			}
 
-			let val = s.currentValue!;
+			let val = s.value!;
 
 			// Apply factor/intercept and convert to Integer
-			if (s.value) {
-				val -= s.value.intercept;
-				val /= s.value.slope;
+			if (s.valueDetails) {
+				val -= s.valueDetails.intercept;
+				val /= s.valueDetails.slope;
 			}
 
 			// Make sure we are sending an integer because the division above could change it to a float.
@@ -450,7 +450,7 @@ class DatabaseService {
 				s.bitOffset,
 				s.bitLength,
 				s.endianess == "little",
-				s.value!.type == "signed",
+				s.valueDetails!.type == "signed",
 				word1,
 				word2
 			);
