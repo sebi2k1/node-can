@@ -15,7 +15,7 @@
     "configure": "node-gyp configure",
     "build": "node-gyp build && tsc",
     "lint": "eslint --fix '*/**/*.{js,ts}'",
-    "test": "mocha"
+    "test": "npm run build && mocha"
   },
   "devDependencies": {
     "@types/node": "^18.0.6",
