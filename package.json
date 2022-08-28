@@ -9,26 +9,35 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git://github.com/sebi2k1/node-can.git"
+    "url": "git://github.com/arcmotive/node-can.git"
   },
   "scripts": {
     "configure": "node-gyp configure",
     "build": "node-gyp build && tsc",
+    "lint": "eslint --fix '*/**/*.{js,ts}'",
     "test": "mocha"
   },
   "devDependencies": {
     "@types/node": "^18.0.6",
     "@types/xml2js": "^0.4.11",
+    "@typescript-eslint/eslint-plugin": "5.33.0",
+    "@typescript-eslint/parser": "5.35.1",
     "mocha": "^7.1.1",
     "node-gyp": ">=1.0.0",
     "nyc": "^15.0.1",
-    "typescript": "^4.7.4"
+    "typescript": "4.8.2",
+    "eslint": "8.11.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-config-react-app": "7.0.0",
+    "eslint-plugin-jest": "^26.1.2",
+    "eslint-plugin-prettier": "4.0.0",
+    "prettier": "^2.4.1"
   },
   "dependencies": {
     "nan": "*",
     "xml2js": ">=0.2.0"
   },
-  "main": "socketcan.js",
+  "main": "dist/socketcan.js",
   "os": [
     "linux"
   ]
