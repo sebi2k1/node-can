@@ -16,6 +16,8 @@
     "sourceMap": true,
     "noEmitOnError": true,
     "outDir": "dist",
+    "declaration": true,
+    "declarationMap": true,
     "paths": {}
   },
   "include": ["src", "native/can.d.ts"]
