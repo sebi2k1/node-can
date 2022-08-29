@@ -13,9 +13,11 @@
   },
   "scripts": {
     "configure": "node-gyp configure",
-    "build": "node-gyp build && tsc",
+    "build": "node-gyp build",
+    "build:ts": "tsc",
+    "build:all": "npm run build && npm run build:ts",
     "lint": "eslint --fix '*/**/*.{js,ts}'",
-    "test": "npm run build && mocha"
+    "test": "mocha"
   },
   "devDependencies": {
     "@types/node": "^16.11.55",
