@@ -93,7 +93,7 @@ export class Signal {
 		public endianess: "little" | "big",
 		public labels: Record<number, string>,
 		public mux: number,
-		public value?: Value
+		public value: Value = new Value()
 	) {}
 }
 
@@ -311,25 +311,12 @@ export function parseKcdFile(file: fs.PathOrFileDescriptor) {
 					break;
 				}
 
-				for (const s in networkDefinition["Bus"][b]["Message"][messageKey][
-					"Signal"
-				]) {
-					const signal =
-						networkDefinition["Bus"][b]["Message"][messageKey]["Signal"][s][
-							"$"
-						];
-					const value =
-						networkDefinition["Bus"][b]["Message"][messageKey]["Signal"][s][
-							"Value"
-						];
-					const labelset =
-						networkDefinition["Bus"][b]["Message"][messageKey]["Signal"][s][
-							"LabelSet"
-						];
-					const consumers =
-						networkDefinition["Bus"][b]["Message"][messageKey]["Signal"][s][
-							"Consumer"
-						];
+				const signals = networkDefinition["Bus"][b]["Message"][messageKey]["Signal"]
+				for (const s in signals) {
+					const signal = signals[s]["$"];
+					const value = signals[s]["Value"];
+					const labelset = signals[s]["LabelSet"];
+					const consumers = signals[s]["Consumer"];
 
 					const newSignal = makeSignalFromXml(signal, value, labelset, 0);
 

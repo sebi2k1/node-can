@@ -414,7 +414,7 @@ export class DatabaseService {
 			);
 
 		Object.values(m.signals).forEach((s) => {
-			if (s.valueDetails == undefined) return;
+			if (s.value == undefined) return;
 
 			if (mux) {
 				if (s.muxGroup.indexOf(parseInt(mux, 16)) === -1) {

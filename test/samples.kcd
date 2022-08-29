@@ -9,6 +9,8 @@
 				</Consumer>
 				<Value type="signed"/>
 			</Signal>
+			<Signal name="tempDeg" offset="0" length="8" endianess="little">
+			</Signal>
 		</Message>
 	</Bus>
 

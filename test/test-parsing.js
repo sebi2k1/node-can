@@ -9,6 +9,11 @@ describe('Parsing KCD', function() {
 
         assert.equal(network.nodes['12'].buses['Motor'].consumes[0].id, 895);
 
+        const motorBus = network.buses['Motor'];
+        const cruiseControlStatus = motorBus.messages[0];
+        console.log('ccs', cruiseControlStatus);
+        assert.equal(cruiseControlStatus.signals[0].value.type, 'signed');
+        assert.equal(cruiseControlStatus.signals[1].value.type, 'unsigned');
         done();
     });
     it('should parse the first mux definition', function(done) {
