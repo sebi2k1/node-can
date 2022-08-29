@@ -12,6 +12,8 @@ install:
 before_script:
   - npm install -g mocha
   - npm install
+  - npm run lint
+  - npm run build:all
 script:
   - sh prepare_test_env.sh
   - NODE_PATH=. mocha
