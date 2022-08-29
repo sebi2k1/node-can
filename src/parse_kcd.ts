@@ -253,14 +253,16 @@ export function parseKcdFile(file: fs.PathOrFileDescriptor) {
 					for (const n in nodeRefs) {
 						const nodeRefId: number = nodeRefs[n]["$"]["id"];
 
-						message.producers.push(new NodeRef(nodeRefId));
+						newMessage.producers.push(new NodeRef(nodeRefId));
 
 						// Look up the node by _id_ (number), not name.
 						const nodeDef: Node = network.nodes[nodeRefId];
 
 						if (nodeDef) {
-							const bus = nodeDef.buses[busName];
-							bus.produces.push(newMessage.id);
+							if (nodeDef.buses[busName] == undefined) {
+								nodeDef.buses[busName] = new BusRefs();
+							}
+							nodeDef.buses[busName].produces.push(newMessage.id);
 						}
 					}
 				}
