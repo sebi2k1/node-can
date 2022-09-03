@@ -85,14 +85,7 @@ export function createRawChannelWithOptions(
  * The actual signal.
  * @class Signal
  */
-export class Signal {
-	readonly name: string;
-	readonly spn: string;
-	readonly bitOffset: number;
-	readonly bitLength: number;
-	readonly endianess: "little" | "big";
-	readonly labels: Record<number, string>;
-	readonly valueDetails?: kcd.Value;
+export class Signal extends kcd.Signal {
 	readonly muxGroup: number[];
 
 	public value?: number = undefined;
@@ -101,20 +94,22 @@ export class Signal {
 	public updateListeners: CallableFunction[] = [];
 
 	constructor(desc: kcd.Signal) {
-		/**
-		 * Symbolic name
-		 * @attribute name
-		 * @final
-		 */
-		this.name = desc.name;
-		this.spn = desc.spn;
-
-		this.bitOffset = desc.bitOffset;
-		this.bitLength = desc.bitLength;
-		this.endianess = desc.endianess;
-
-		this.valueDetails = desc.value;
-		this.labels = desc.labels;
+		super(
+			desc.name,
+			desc.spn,
+			desc.bitOffset,
+			desc.bitLength,
+			desc.endianess,
+			desc.labels,
+			desc.mux,
+			desc.slope,
+			desc.intercept,
+			desc.unit,
+			desc.type,
+			desc.defaultValue,
+			desc.minValue,
+			desc.maxValue
+		)
 
 		/**
 		 * this will allow triggering on mux'ed message ids.
@@ -166,29 +161,17 @@ export class Signal {
 	 * @for Signal
 	 */
 	update(newValue: number) {
-		if (this.valueDetails) {
-			// TODO: Move this block to a `Value.isValid(v)` function?
-			if (this.valueDetails.maxValue && newValue > this.valueDetails.maxValue) {
-				console.error(
-					"ERROR : " +
-						this.name +
-						" value= " +
-						newValue +
-						" is outof bounds  > " +
-						this.valueDetails.maxValue
-				);
-			}
+		// TODO: Move this block to a `Value.isValid(v)` function?
+		if (this.maxValue && newValue > this.maxValue) {
+			console.error(
+				`ERROR : ${this.name} value=${newValue} is outof bounds > ${this.maxValue}`
+			);
+		}
 
-			if (this.valueDetails.minValue && newValue < this.valueDetails.minValue) {
-				console.error(
-					"ERROR : " +
-						this.name +
-						" value= " +
-						newValue +
-						" is outof bounds  < " +
-						this.valueDetails.minValue
-				);
-			}
+		if (this.minValue && newValue < this.minValue) {
+			console.error(
+				`ERROR : ${this.name} value=${newValue} is outof bounds < ${this.minValue}`
+			);
 		}
 
 		const changed = this.value !== newValue;
@@ -353,7 +336,7 @@ export class DatabaseService {
 		for (const i in m.signals) {
 			const s = m.signals[i];
 
-			if (s.valueDetails === undefined) continue;
+			if (s.value === undefined) continue;
 
 			// if this is a mux signal and the muxor isnt in my list...
 			if (m.muxed && s.muxGroup.indexOf(mux_count) == -1) {
@@ -365,14 +348,14 @@ export class DatabaseService {
 				s.bitOffset,
 				s.bitLength,
 				s.endianess == "little",
-				s.valueDetails.type == "signed"
+				s.type == "signed"
 			);
 
 			let val = ret[0] + (ret[1] << 32);
 
-			if (s.valueDetails.slope) val *= s.valueDetails.slope;
+			if (s.slope) val *= s.slope;
 
-			if (s.valueDetails.intercept) val += s.valueDetails.intercept;
+			if (s.intercept) val += s.intercept;
 
 			s.update(val);
 		}
@@ -425,10 +408,8 @@ export class DatabaseService {
 			let val = s.value!;
 
 			// Apply factor/intercept and convert to Integer
-			if (s.valueDetails) {
-				val -= s.valueDetails.intercept;
-				val /= s.valueDetails.slope;
-			}
+			val -= s.intercept;
+			val /= s.slope;
 
 			// Make sure we are sending an integer because the division above could change it to a float.
 			val = Math.round(val);
@@ -450,7 +431,7 @@ export class DatabaseService {
 				s.bitOffset,
 				s.bitLength,
 				s.endianess == "little",
-				s.valueDetails!.type == "signed",
+				s.type == "signed",
 				word1,
 				word2
 			);

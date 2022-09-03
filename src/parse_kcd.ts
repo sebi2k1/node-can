@@ -72,18 +72,6 @@ export class Node {
 	) {}
 }
 
-export class Value {
-	constructor(
-		public slope: number = 1.0,
-		public intercept: number = 0.0,
-		public unit: string = "",
-		public type: "signed" | "unsigned" = "unsigned",
-		public defaultValue: number = 0.0,
-		public minValue?: number,
-		public maxValue?: number
-	) {}
-}
-
 export class Signal {
 	constructor(
 		public name: string,
@@ -93,7 +81,13 @@ export class Signal {
 		public endianess: "little" | "big",
 		public labels: Record<number, string>,
 		public mux: number,
-		public value: Value = new Value()
+		public slope: number = 1.0,
+		public intercept: number = 0.0,
+		public unit: string = "",
+		public type: "signed" | "unsigned" = "unsigned",
+		public defaultValue: number = 0.0,
+		public minValue?: number,
+		public maxValue?: number
 	) {}
 }
 
@@ -162,31 +156,24 @@ function makeSignalFromXml(
 		}
 	}
 
-	let value: Value | undefined;
 	// add Values from the database
-	if (Array.isArray(xmlValue)) {
-		const rawValue = xmlValue[0]["$"];
-
-		value = new Value(
-			rawValue.slope ? parseFloat(rawValue.slope) : 1.0,
-			rawValue.intercept ? parseFloat(rawValue.intercept) : 0.0,
-			rawValue.unit ? rawValue.unit : "",
-			rawValue.type ? rawValue.type : "unsigned",
-			rawValue.defaultValue ? parseFloat(rawValue.defaultValue) : 0.0,
-			rawValue.min ? rawValue.min : undefined,
-			rawValue.max ? rawValue.max : undefined
-		);
-	}
+	const rawValue = Array.isArray(xmlValue) ? xmlValue[0]["$"] : undefined;
 
 	const newSignal = new Signal(
 		xmlSignal.name,
 		xmlSignal.spn,
 		bitOffset,
-		xmlSignal.length ? parseInt(xmlSignal.length) : 1,
-		xmlSignal.endianess ? xmlSignal.endianess : "little",
+		parseInt(xmlSignal.length ?? 1),
+		xmlSignal?.endianess ?? "little",
 		labelSet,
 		muxCount,
-		value
+		parseFloat(rawValue?.slope ?? 1.0),
+		parseFloat(rawValue?.intercept ?? 0.0),
+		rawValue?.unit ?? "",
+		rawValue?.type ?? "unsigned",
+		parseFloat(rawValue?.defaultValue ?? 0.0),
+		rawValue?.min ?? undefined,
+		rawValue?.max ?? undefined
 	);
 
 	return newSignal;
