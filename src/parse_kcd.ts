@@ -172,8 +172,8 @@ function makeSignalFromXml(
 		rawValue?.unit ?? "",
 		rawValue?.type ?? "unsigned",
 		parseFloat(rawValue?.defaultValue ?? 0.0),
-		rawValue?.min ?? undefined,
-		rawValue?.max ?? undefined
+		rawValue?.min ? parseFloat(rawValue.min) : undefined,
+		rawValue?.max ? parseFloat(rawValue.max) : undefined
 	);
 
 	return newSignal;
@@ -298,7 +298,9 @@ export function parseKcdFile(file: fs.PathOrFileDescriptor) {
 					break;
 				}
 
-				const signals = networkDefinition["Bus"][b]["Message"][messageKey]["Signal"]
+				const signals =
+					networkDefinition["Bus"][b]["Message"][messageKey]["Signal"];
+
 				for (const s in signals) {
 					const signal = signals[s]["$"];
 					const value = signals[s]["Value"];
