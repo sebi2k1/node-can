@@ -109,7 +109,7 @@ export class Signal extends kcd.Signal {
 			desc.defaultValue,
 			desc.minValue,
 			desc.maxValue
-		)
+		);
 
 		/**
 		 * this will allow triggering on mux'ed message ids.
@@ -164,13 +164,13 @@ export class Signal extends kcd.Signal {
 		// TODO: Move this block to a `Value.isValid(v)` function?
 		if (this.maxValue && newValue > this.maxValue) {
 			console.error(
-				`ERROR : ${this.name} value=${newValue} is outof bounds > ${this.maxValue}`
+				`ERROR : ${this.name} value = ${newValue} is out of bounds > ${this.maxValue}`
 			);
 		}
 
 		if (this.minValue && newValue < this.minValue) {
 			console.error(
-				`ERROR : ${this.name} value=${newValue} is outof bounds < ${this.minValue}`
+				`ERROR : ${this.name} value = ${newValue} is out of bounds < ${this.minValue}`
 			);
 		}
 
@@ -336,8 +336,6 @@ export class DatabaseService {
 		for (const i in m.signals) {
 			const s = m.signals[i];
 
-			if (s.value === undefined) continue;
-
 			// if this is a mux signal and the muxor isnt in my list...
 			if (m.muxed && s.muxGroup.indexOf(mux_count) == -1) {
 				continue;
@@ -448,3 +446,4 @@ export class DatabaseService {
  * @for exports
  */
 export const parseNetworkDescription = kcd.parseKcdFile;
+export { kcd };

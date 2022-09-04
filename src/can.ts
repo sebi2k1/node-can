@@ -16,7 +16,7 @@ export interface RawChannel {
 	addListener(
 		event: string,
 		callback: CallableFunction,
-		instance: object
+		instance?: object
 	): void;
 
 	/**
@@ -78,7 +78,7 @@ export interface RawChannel {
 
 const can = require("../build/Release/can");
 
-export var RawChannel: {
+export const RawChannel: {
 	new (
 		name: string,
 		timestamps?: boolean,
