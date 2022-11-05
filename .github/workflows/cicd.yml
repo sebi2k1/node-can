@@ -17,25 +17,25 @@ jobs:
         node-version: [8.x, 10.x, 12.x, 13.x, 14.x, 15.x]
 
     steps:
-      -name: Checkout
+      - name: Checkout
         uses: actions/checkout@v3
       
-      -name: Use Node.js ${{ matrix.node-version }}
+      - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
       
-      -name: Prepare Ubuntu
+      - name: Prepare Ubuntu
         run: |
           sudo apt-get install -y can-utils
           sudo apt-get install -y libnode-dev
           sudo apt-get install linux-modules-extra-$(uname -r)
 
-      -name: Prepare deps
+      - name: Prepare deps
         run: npm install -g mocha
         run: npm install
       
-      -name: Perform tests
+      - name: Perform tests
         run: |
           sh prepare_test_env.sh
           NODE_PATH=. mocha
