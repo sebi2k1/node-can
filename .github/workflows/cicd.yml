@@ -1,0 +1,37 @@
+name: Full build and test
+
+on: [ push, pull_request ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [ 12.x, 14.x, 16.x, 18.x, 19.x ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+      
+      - name: Prepare Ubuntu
+        run: |
+          sudo apt-get install -y can-utils
+          sudo apt-get install -y libnode-dev
+          sudo apt-get install linux-modules-extra-$(uname -r)
+
+      - name: Prepare deps
+        run: |
+          npm install -g mocha
+          npm install
+      
+      - name: Perform tests
+        run: |
+          sh prepare_test_env.sh
+          NODE_PATH=. mocha
