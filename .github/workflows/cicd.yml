@@ -28,8 +28,9 @@ jobs:
           sudo apt-get install linux-modules-extra-$(uname -r)
 
       - name: Prepare deps
-        run: npm install -g mocha
-        run: npm install
+        run: |
+          npm install -g mocha
+          npm install
       
       - name: Perform tests
         run: |
