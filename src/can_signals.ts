@@ -1,4 +1,4 @@
-const can_signals = require("../build/Release/can_signals");
+import can_signals = require("../build/Release/can_signals");
 
 // Decode signal according description
 // arg[0] - Data array
@@ -6,7 +6,7 @@ const can_signals = require("../build/Release/can_signals");
 // arg[2] - bitLength one indexed
 // arg[3] - endianess
 // arg[4] - signed flag
-export var decodeSignal: {
+export const decodeSignal: {
 	(
 		data: Buffer,
 		bitOffset: number,
@@ -24,7 +24,7 @@ export var decodeSignal: {
 // arg[4] - signed flag
 // arg[5] - first 4 bytes value to encode
 // arg[6] - second 4 bytes value to encode
-export var encodeSignal: {
+export const encodeSignal: {
 	(
 		data: Buffer,
 		bitOffset: number,

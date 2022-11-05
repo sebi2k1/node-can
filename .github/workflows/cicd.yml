@@ -14,12 +14,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      
+
       - name: Prepare Ubuntu
         run: |
           sudo apt-get install -y can-utils
@@ -29,9 +29,11 @@ jobs:
       - name: Prepare deps
         run: |
           npm install -g mocha
-          npm install
-      
+          npm ci
+
       - name: Perform tests
         run: |
           sh prepare_test_env.sh
-          NODE_PATH=. mocha
+          npm run build:all
+          npm run lint
+          npm run test

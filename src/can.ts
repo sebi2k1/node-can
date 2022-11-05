@@ -76,7 +76,7 @@ export interface RawChannel {
 	disableLoopback(): void;
 }
 
-const can = require("../build/Release/can");
+import can = require("../build/Release/can");
 
 export const RawChannel: {
 	new (
