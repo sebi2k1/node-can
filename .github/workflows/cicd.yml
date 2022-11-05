@@ -1,5 +1,4 @@
-name: Perform full build and test
-run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
+name: Full build and test
 
 on: [ push, pull_request ]
 
