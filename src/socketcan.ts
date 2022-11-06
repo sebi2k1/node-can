@@ -22,7 +22,7 @@
 // -----------------------------------------------------------------------------
 // CAN-Object
 
-import * as can from "./can";
+import * as can from "../build/Release/can.node";
 
 // -----------------------------------------------------------------------------
 /**
@@ -30,7 +30,9 @@ import * as can from "./can";
  * encoded in CAN messages.
  * @module Signals
  */
-import * as _signals from "./can_signals";
+import * as _signals from "../build/Release/can_signals.node";
+
+// import * as _signals from "can_signals";
 
 import * as kcd from "./parse_kcd";
 
