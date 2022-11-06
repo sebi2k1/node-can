@@ -30,9 +30,16 @@ jobs:
         run: |
           npm ci
 
+      - name: Compile
+        run: |
+          npm run configure
+          npm run build:all
+
+      - name: Lint
+        run: |
+          npm run lint
+
       - name: Perform tests
         run: |
           sh prepare_test_env.sh
-          npm run build:all
-          npm run lint
           npm run test
