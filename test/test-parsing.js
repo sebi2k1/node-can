@@ -12,8 +12,8 @@ describe('Parsing KCD', function() {
         const motorBus = network.buses['Motor'];
         const cruiseControlStatus = motorBus.messages[0];
         console.log('ccs', cruiseControlStatus);
-        assert.equal(cruiseControlStatus.signals[0].value.type, 'signed');
-        assert.equal(cruiseControlStatus.signals[1].value.type, 'unsigned');
+        assert.equal(cruiseControlStatus.signals[0].type, 'signed');
+        assert.equal(cruiseControlStatus.signals[1].type, 'unsigned');
         done();
     });
     it('should parse the first mux definition', function(done) {
