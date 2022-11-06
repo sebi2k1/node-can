@@ -11,18 +11,15 @@ on:
       - 'package.json'
 
 jobs:
-  build:
+  publish:
     runs-on: ubuntu-latest
+    environment: production
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: 12
-          registry-url: https://registry.npmjs.org/
-      - run: |
-          npm ci
-          npm run configure
-          npm run build:all
-          npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+      - run: npm install
+      - uses: JS-DevTools/npm-publish@v1
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
