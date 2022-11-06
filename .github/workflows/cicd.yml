@@ -28,6 +28,7 @@ jobs:
 
       - name: Prepare deps
         run: |
+          npm i -g npm
           npm ci
 
       - name: Compile
