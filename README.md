@@ -1,5 +1,4 @@
-[![Build Status](https://travis-ci.com/sebi2k1/node-can.svg?branch=master)](https://travis-ci.com/sebi2k1/node-can)
-[![Dependency Status](https://david-dm.org/sebi2k1/node-can.svg)](https://david-dm.org/sebi2k1/node-can)
+[![Build Status](https://github.com/sebi2k1/node-can/actions/workflows/cicd.yml/badge.svg?branch=master)](https://travis-ci.com/sebi2k1/node-can)
 
 node-can
 ========
