@@ -85,7 +85,7 @@
 
 
         <div class="foundat">
-            Defined in: <a href="../files/socketcan.js.html#l47"><code>socketcan.js:47</code></a>
+            Defined in: <a href="../files/src_socketcan.ts.html#l86"><code>src&#x2F;socketcan.ts:86</code></a>
         </div>
 
             Module: <a href="../modules/Signals.html">Signals</a>
@@ -104,7 +104,6 @@
         <li class="api-class-tab index"><a href="#index">Index</a></li>
 
             <li class="api-class-tab methods"><a href="#methods">Methods</a></li>
-            <li class="api-class-tab attrs"><a href="#attrs">Attributes</a></li>
     </ul>
 
     <div>
@@ -120,6 +119,14 @@
 
                             </li>
                             <li class="index-item method">
+                                <a href="#method_onUpdate">onUpdate</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_removeListener">removeListener</a>
+
+                            </li>
+                            <li class="index-item method">
                                 <a href="#method_update">update</a>
 
                             </li>
@@ -127,18 +134,6 @@
                 </div>
 
 
-                <div class="index-section attrs">
-                    <h3>Attributes</h3>
-
-                    <ul class="index-list attrs">
-                            <li class="index-item attr">
-                                <a href="#attr_name">name</a>
-                            </li>
-                            <li class="index-item attr">
-                                <a href="#attr_value">value</a>
-                            </li>
-                    </ul>
-                </div>
 
         </div>
 
@@ -166,7 +161,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/socketcan.js.html#l95"><code>socketcan.js:95</code></a>
+        <a href="../files/src_socketcan.ts.html#l122"><code>src&#x2F;socketcan.ts:122</code></a>
         </p>
 
 
@@ -199,6 +194,114 @@
 
 
 </div>
+<div id="method_onUpdate" class="method item">
+    <h3 class="name"><code>onUpdate</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>listener</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/src_socketcan.ts.html#l133"><code>src&#x2F;socketcan.ts:133</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Keep track of listeners who want to be notified if this signal updates</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">listener</code>
+                        <span class="type">Object</span>
+
+
+                    <div class="param-description">
+                        <p>JS callback to get notification</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
+<div id="method_removeListener" class="method item">
+    <h3 class="name"><code>removeListener</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>listener</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/src_socketcan.ts.html#l144"><code>src&#x2F;socketcan.ts:144</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Remove listener from signal onChange and/or onUpdate</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">listener</code>
+                        <span class="type">Object</span>
+
+
+                    <div class="param-description">
+                        <p>to be removed</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
 <div id="method_update" class="method item">
     <h3 class="name"><code>update</code></h3>
 
@@ -220,7 +323,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/socketcan.js.html#l105"><code>socketcan.js:105</code></a>
+        <a href="../files/src_socketcan.ts.html#l157"><code>src&#x2F;socketcan.ts:157</code></a>
         </p>
 
 
@@ -258,70 +361,6 @@ send to the bus (@see DatabaseServer::send)</p>
             </div>
 
 
-            <div id="attrs" class="api-class-tabpanel">
-                <h2 class="off-left">Attributes</h2>
-
-                    <div id="attr_name" class="attr item">
-                        <a name="config_name"></a> 
-                        <h3 class="name"><code>name</code></h3>
-                        <span class="type"></span>
-                    
-                    
-                    
-                            <span class="flag final">final</span>
-                    
-                    
-                    
-                    
-                    
-                        <div class="meta">
-                                    <p>
-                                    Defined in
-                            <a href="../files/socketcan.js.html#l53"><code>socketcan.js:53</code></a>
-                            </p>
-                    
-                    
-                        </div>
-                    
-                        <div class="description">
-                            <p>Symbolic name</p>
-                    
-                        </div>
-                    
-                    
-                    
-                    </div>
-                    <div id="attr_value" class="attr item">
-                        <a name="config_value"></a> 
-                        <h3 class="name"><code>value</code></h3>
-                        <span class="type"></span>
-                    
-                    
-                    
-                            <span class="flag final">final</span>
-                    
-                    
-                    
-                    
-                    
-                        <div class="meta">
-                                    <p>
-                                    Defined in
-                            <a href="../files/socketcan.js.html#l84"><code>socketcan.js:84</code></a>
-                            </p>
-                    
-                    
-                        </div>
-                    
-                        <div class="description">
-                            <p>Current value</p>
-                    
-                        </div>
-                    
-                    
-                    
-                    </div>
-            </div>
 
     </div>
 </div>

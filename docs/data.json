@@ -1,8 +1,15 @@
 {
     "project": {},
     "files": {
-        "socketcan.js": {
-            "name": "socketcan.js",
+        "src/can.d.ts": {
+            "name": "src/can.d.ts",
+            "modules": {},
+            "classes": {},
+            "fors": {},
+            "namespaces": {}
+        },
+        "src/socketcan.ts": {
+            "name": "src/socketcan.ts",
             "modules": {
                 "Signals": 1
             },
@@ -31,14 +38,14 @@
                 "DatabaseService": 1
             },
             "fors": {
+                "exports": 1,
                 "Signal": 1,
-                "DatabaseService": 1,
-                "exports": 1
+                "DatabaseService": 1
             },
             "namespaces": {},
             "tag": "module",
-            "file": "socketcan.js",
-            "line": 203,
+            "file": "src/socketcan.ts",
+            "line": 284,
             "description": "The Signals modules provides an interface to access the values/signals\nencoded in CAN messages."
         }
     },
@@ -51,7 +58,8 @@
             "extensions": [],
             "plugin_for": [],
             "extension_for": [],
-            "module": "Signals"
+            "module": "Signals",
+            "namespace": ""
         },
         "Signal": {
             "name": "Signal",
@@ -63,8 +71,8 @@
             "extension_for": [],
             "module": "Signals",
             "namespace": "",
-            "file": "socketcan.js",
-            "line": 47,
+            "file": "src/socketcan.ts",
+            "line": 86,
             "description": "The actual signal."
         },
         "Message": {
@@ -77,8 +85,8 @@
             "extension_for": [],
             "module": "Signals",
             "namespace": "",
-            "file": "socketcan.js",
-            "line": 134,
+            "file": "src/socketcan.ts",
+            "line": 198,
             "description": "Just a container to keep the Signals."
         },
         "DatabaseService": {
@@ -91,8 +99,8 @@
             "extension_for": [],
             "module": "Signals",
             "namespace": "",
-            "file": "socketcan.js",
-            "line": 203,
+            "file": "src/socketcan.ts",
+            "line": 284,
             "description": "A DatabaseService is usually generated once per bus to collect signals\ncoded in the CAN messages according a DB description.",
             "is_constructor": 1,
             "params": [
@@ -113,8 +121,117 @@
     "elements": {},
     "classitems": [
         {
-            "file": "socketcan.js",
-            "line": 28,
+            "file": "src/can.d.ts",
+            "line": 17,
+            "description": "Add listener to receive certain notifications",
+            "itemtype": "method",
+            "name": "addListener",
+            "params": [
+                {
+                    "name": "event",
+                    "description": "onMessage to register for incoming messages",
+                    "type": "String"
+                },
+                {
+                    "name": "callback",
+                    "description": "JS callback object",
+                    "type": "Any"
+                },
+                {
+                    "name": "instance",
+                    "description": "Optional instance pointer to call callback",
+                    "type": "Any"
+                }
+            ],
+            "class": "exports"
+        },
+        {
+            "file": "src/can.d.ts",
+            "line": 30,
+            "description": "Start operation on this CAN channel",
+            "itemtype": "method",
+            "name": "start",
+            "class": "exports"
+        },
+        {
+            "file": "src/can.d.ts",
+            "line": 36,
+            "description": "Stop any operations on this CAN channel",
+            "itemtype": "method",
+            "name": "stop",
+            "class": "exports"
+        },
+        {
+            "file": "src/can.d.ts",
+            "line": 42,
+            "description": "Send a CAN message immediately.\n\nPLEASE NOTE: By default, this function may block if the Tx buffer is not available. Please use\ncreateRawChannelWithOptions({non_block_send: false}) to get non-blocking sending activated.",
+            "itemtype": "method",
+            "name": "send",
+            "params": [
+                {
+                    "name": "message",
+                    "description": "JSON object describing the CAN message, keys are id, length, data {Buffer}, ext or rtr",
+                    "type": "Object"
+                }
+            ],
+            "class": "exports"
+        },
+        {
+            "file": "src/can.d.ts",
+            "line": 53,
+            "description": "Send a CAN FD message immediately.\n\nPLEASE NOTE: By default, this function may block if the Tx buffer is not available. Please use\ncreateRawChannelWithOptions({non_block_send: false}) to get non-blocking sending activated.\n\nPLEASE NOTE: Might fail if underlying device doesnt support CAN FD. Structure is not yet validated.",
+            "itemtype": "method",
+            "name": "sendFD",
+            "params": [
+                {
+                    "name": "message",
+                    "description": "JSON object describing the CAN message, keys are id, length, data {Buffer}, ext",
+                    "type": "Object"
+                }
+            ],
+            "class": "exports"
+        },
+        {
+            "file": "src/can.d.ts",
+            "line": 66,
+            "description": "Set a list of active filters to be applied for incoming messages",
+            "itemtype": "method",
+            "name": "setRxFilters",
+            "params": [
+                {
+                    "name": "filters",
+                    "description": "single filter or array of filter e.g. { id: 0x1ff, mask: 0x1ff, invert: false}, result of (id & mask)",
+                    "type": "Object"
+                }
+            ],
+            "class": "exports"
+        },
+        {
+            "file": "src/can.d.ts",
+            "line": 73,
+            "description": "Set a list of active filters to be applied for errors",
+            "itemtype": "method",
+            "name": "setErrorFilters",
+            "params": [
+                {
+                    "name": "errorMask",
+                    "description": "CAN error mask",
+                    "type": "Uint32"
+                }
+            ],
+            "class": "exports"
+        },
+        {
+            "file": "src/can.d.ts",
+            "line": 80,
+            "description": "Disable loopback of channel. By default it is activated",
+            "itemtype": "method",
+            "name": "disableLoopback",
+            "class": "exports"
+        },
+        {
+            "file": "src/socketcan.ts",
+            "line": 39,
             "itemtype": "method",
             "name": "createRawChannel",
             "params": [
@@ -122,51 +239,59 @@
                     "name": "channel",
                     "description": "Channel name (e.g. vcan0)",
                     "type": "String"
+                },
+                {
+                    "name": "timestamps",
+                    "description": "Whether or not timestamps shall be generated when reading a message",
+                    "type": "Bool"
+                },
+                {
+                    "name": "protocol",
+                    "description": "optionally provide another default protocol value (default is CAN_RAW)",
+                    "type": "Integer"
                 }
             ],
             "return": {
                 "description": "a new channel object or exception",
                 "type": "RawChannel"
             },
-            "class": "exports"
-        },
-        {
-            "file": "socketcan.js",
-            "line": 53,
-            "description": "Symbolic name",
-            "itemtype": "attribute",
-            "name": "name",
-            "final": 1,
-            "class": "Signal",
+            "class": "exports",
             "module": "Signals"
         },
         {
-            "file": "socketcan.js",
-            "line": 74,
-            "description": "Label set for defined states of the signal.",
-            "class": "Signal",
+            "file": "src/socketcan.ts",
+            "line": 61,
+            "itemtype": "method",
+            "name": "createRawChannelWithOptions",
+            "params": [
+                {
+                    "name": "channel",
+                    "description": "Channel name (e.g. vcan0)",
+                    "type": "String"
+                },
+                {
+                    "name": "options",
+                    "description": "list of options (timestamps, protocol, non_block_send)",
+                    "type": "Dict"
+                }
+            ],
+            "return": {
+                "description": "a new channel object or exception",
+                "type": "RawChannel"
+            },
+            "class": "exports",
             "module": "Signals"
         },
         {
-            "file": "socketcan.js",
-            "line": 79,
+            "file": "src/socketcan.ts",
+            "line": 116,
             "description": "this will allow triggering on mux'ed message ids.",
             "class": "Signal",
             "module": "Signals"
         },
         {
-            "file": "socketcan.js",
-            "line": 84,
-            "description": "Current value",
-            "itemtype": "attribute",
-            "name": "value",
-            "final": 1,
-            "class": "Signal",
-            "module": "Signals"
-        },
-        {
-            "file": "socketcan.js",
-            "line": 95,
+            "file": "src/socketcan.ts",
+            "line": 122,
             "description": "Keep track of listeners who want to be notified if this signal changes",
             "itemtype": "method",
             "name": "onChange",
@@ -180,8 +305,38 @@
             "module": "Signals"
         },
         {
-            "file": "socketcan.js",
-            "line": 105,
+            "file": "src/socketcan.ts",
+            "line": 133,
+            "description": "Keep track of listeners who want to be notified if this signal updates",
+            "itemtype": "method",
+            "name": "onUpdate",
+            "params": [
+                {
+                    "name": "listener",
+                    "description": "JS callback to get notification"
+                }
+            ],
+            "class": "Signal",
+            "module": "Signals"
+        },
+        {
+            "file": "src/socketcan.ts",
+            "line": 144,
+            "description": "Remove listener from signal onChange and/or onUpdate",
+            "itemtype": "method",
+            "name": "removeListener",
+            "params": [
+                {
+                    "name": "listener",
+                    "description": "to be removed"
+                }
+            ],
+            "class": "Signal",
+            "module": "Signals"
+        },
+        {
+            "file": "src/socketcan.ts",
+            "line": 157,
             "description": "Set new value of this signal. Any local registered clients will\nreceive a notification. Please note, no CAN message is actually\nsend to the bus (@see DatabaseServer::send)",
             "itemtype": "method",
             "name": "update",
@@ -196,8 +351,8 @@
             "module": "Signals"
         },
         {
-            "file": "socketcan.js",
-            "line": 140,
+            "file": "src/socketcan.ts",
+            "line": 213,
             "description": "CAN identifier",
             "itemtype": "attribute",
             "name": "id",
@@ -206,8 +361,8 @@
             "module": "Signals"
         },
         {
-            "file": "socketcan.js",
-            "line": 147,
+            "file": "src/socketcan.ts",
+            "line": 220,
             "description": "Extended Frame Format used",
             "itemtype": "attribute",
             "name": "ext",
@@ -216,8 +371,8 @@
             "module": "Signals"
         },
         {
-            "file": "socketcan.js",
-            "line": 154,
+            "file": "src/socketcan.ts",
+            "line": 227,
             "description": "Symbolic name",
             "itemtype": "attribute",
             "name": "name",
@@ -226,8 +381,8 @@
             "module": "Signals"
         },
         {
-            "file": "socketcan.js",
-            "line": 161,
+            "file": "src/socketcan.ts",
+            "line": 234,
             "description": "Length in bytes of resulting CAN message",
             "itemtype": "attribute",
             "name": "len",
@@ -236,8 +391,8 @@
             "module": "Signals"
         },
         {
-            "file": "socketcan.js",
-            "line": 169,
+            "file": "src/socketcan.ts",
+            "line": 242,
             "description": "This is the time frame that the message gets generated",
             "itemtype": "attribute",
             "name": "interval",
@@ -246,9 +401,9 @@
             "module": "Signals"
         },
         {
-            "file": "socketcan.js",
-            "line": 177,
-            "description": "This is tells us the message is mutliplexed.",
+            "file": "src/socketcan.ts",
+            "line": 250,
+            "description": "This tells us the message is mutliplexed.",
             "itemtype": "attribute",
             "name": "muxed",
             "final": 1,
@@ -256,44 +411,43 @@
             "module": "Signals"
         },
         {
-            "file": "socketcan.js",
-            "line": 185,
-            "description": "Named array of signals within this message. Accessible via index and name.",
+            "file": "src/socketcan.ts",
+            "line": 258,
+            "description": "Multiplexor parameter (just one supported right now).",
             "itemtype": "attribute",
-            "name": "signals",
-            "type": "Signal",
+            "name": "mux",
             "final": 1,
             "class": "Message",
             "module": "Signals"
         },
         {
-            "file": "socketcan.js",
-            "line": 216,
-            "description": "Named array of known messages. Accessible via index and name.",
+            "file": "src/socketcan.ts",
+            "line": 266,
+            "description": "Named information to inform that the frame is CAN_FD format .",
             "itemtype": "attribute",
-            "name": "messages",
-            "type": "Message",
-            "class": "DatabaseService",
+            "name": "Boolean",
+            "final": 1,
+            "class": "Message",
             "module": "Signals"
         },
         {
-            "file": "socketcan.js",
-            "line": 279,
+            "file": "src/socketcan.ts",
+            "line": 364,
             "description": "Construct a CAN message and encode all related signals according\nthe rules. Finally send the message to the bus.",
             "itemtype": "method",
             "name": "send",
             "params": [
                 {
                     "name": "msg_name",
-                    "description": "Name of the message to generate"
+                    "description": "Name of the message to generate (indicate mux by append .MUX_VALUE in hex)"
                 }
             ],
             "class": "DatabaseService",
             "module": "Signals"
         },
         {
-            "file": "socketcan.js",
-            "line": 343,
+            "file": "src/socketcan.ts",
+            "line": 444,
             "itemtype": "method",
             "name": "parseNetworkDescription",
             "params": [
@@ -312,12 +466,8 @@
     ],
     "warnings": [
         {
-            "message": "Missing item type\nLabel set for defined states of the signal.",
-            "line": " socketcan.js:74"
-        },
-        {
             "message": "Missing item type\nthis will allow triggering on mux'ed message ids.",
-            "line": " socketcan.js:79"
+            "line": " src/socketcan.ts:116"
         }
     ]
 }

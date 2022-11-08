@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Signals</title>
+    <title>src/can.d.ts</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -80,55 +80,98 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-<h1>Signals Module</h1>
-<div class="box clearfix meta">
+<h1 class="file-heading">File: src/can.d.ts</h1>
 
+<div class="file">
+    <pre class="code prettyprint linenums">
+declare module &quot;*can.node&quot; {
+	export interface Message {
+		id: number;
+		ext: boolean;
+		rtr: boolean;
+		data: Buffer;
+	}
 
-        <div class="foundat">
-            Defined in: <a href="../files/src_socketcan.ts.html#l284"><code>src&#x2F;socketcan.ts:284</code></a>
-        </div>
+	export class RawChannel {
+		constructor(
+			name: string,
+			timestamps?: boolean,
+			protocol?: number,
+			non_block_send?: boolean
+		);
 
-</div>
+		/**
+		 * Add listener to receive certain notifications
+		 * @method addListener
+		 * @param event {string} onMessage to register for incoming messages
+		 * @param callback {any} JS callback object
+		 * @param instance {any} Optional instance pointer to call callback
+		 */
+		addListener(
+			event: string,
+			callback: CallableFunction,
+			instance?: object
+		): void;
 
+		/**
+		 * Start operation on this CAN channel
+		 * @method start
+		 */
+		start(): void;
 
-<div class="box intro">
-    <p>The Signals modules provides an interface to access the values/signals
-encoded in CAN messages.</p>
+		/**
+		 * Stop any operations on this CAN channel
+		 * @method stop
+		 */
+		stop(): void;
 
-</div>
+		/**
+		 * Send a CAN message immediately.
+		 *
+		 * PLEASE NOTE: By default, this function may block if the Tx buffer is not available. Please use
+		 * createRawChannelWithOptions({non_block_send: false}) to get non-blocking sending activated.
+		 *
+		 * @method send
+		 * @param message {Object} JSON object describing the CAN message, keys are id, length, data {Buffer}, ext or rtr
+		 */
+		send(message: Message): void;
 
+		/**
+		 * Send a CAN FD message immediately.
+		 *
+		 * PLEASE NOTE: By default, this function may block if the Tx buffer is not available. Please use
+		 * createRawChannelWithOptions({non_block_send: false}) to get non-blocking sending activated.
+		 *
+		 * PLEASE NOTE: Might fail if underlying device doesnt support CAN FD. Structure is not yet validated.
+		 *
+		 * @method sendFD
+		 * @param message {Object} JSON object describing the CAN message, keys are id, length, data {Buffer}, ext
+		 */
+		sendFD(message: Message): void;
 
-<div class="yui3-g">
-    <div class="yui3-u-1-2">
-            <p>This module provides the following classes:</p>
+		/**
+		 * Set a list of active filters to be applied for incoming messages
+		 * @method setRxFilters
+		 * @param filters {Object} single filter or array of filter e.g. { id: 0x1ff, mask: 0x1ff, invert: false}, result of (id &amp; mask)
+		 */
+		setRxFilters(filters: Record&lt;string, unknown&gt;[]): void;
 
-            <ul class="module-classes">
-                <li class="module-class">
-                    <a href="../classes/DatabaseService.html">
-                        DatabaseService
-                    </a>
-                </li>
-                <li class="module-class">
-                    <a href="../classes/exports.html">
-                        exports
-                    </a>
-                </li>
-                <li class="module-class">
-                    <a href="../classes/Message.html">
-                        Message
-                    </a>
-                </li>
-                <li class="module-class">
-                    <a href="../classes/Signal.html">
-                        Signal
-                    </a>
-                </li>
-            </ul>
-    </div>
+		/**
+		 * Set a list of active filters to be applied for errors
+		 * @method setErrorFilters
+		 * @param errorMask {Uint32} CAN error mask
+		 */
+		setErrorFilters(errorMask: number): void;
 
+		/**
+		 * Disable loopback of channel. By default it is activated
+		 * @method disableLoopback
+		 */
+		disableLoopback(): void;
+	}
+}
 
-    <div class="yui3-u-1-2">
-    </div>
+    </pre>
 </div>
                     </div>
                 </div>
