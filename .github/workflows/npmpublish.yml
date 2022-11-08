@@ -19,8 +19,10 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 14
-      - run: npm i -g npm
-      - run: npm ci
+      - run: |
+          npm i -g npm
+          npm ci
+          npm build:ts
       - uses: JS-DevTools/npm-publish@v1
         with:
           dry-run: true
