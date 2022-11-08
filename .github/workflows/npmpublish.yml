@@ -23,4 +23,5 @@ jobs:
       - run: npm ci
       - uses: JS-DevTools/npm-publish@v1
         with:
+          dry-run: true
           token: ${{ secrets.NPM_TOKEN }}
