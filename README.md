@@ -66,9 +66,9 @@ There are two options for installing node-can:
    then:
 
 ```shell
-    $ npm i
+    $ npm ci
     $ npm run configure
-    $ npm run build
+    $ npm run build:all
 ```
 
 2. Install via npm:
