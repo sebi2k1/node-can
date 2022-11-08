@@ -9,17 +9,17 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [ 12.x, 14.x, 16.x, 18.x, 19.x ]
+        node-version: [ 14.x, 16.x, 18.x, 19.x ]
 
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      
+
       - name: Prepare Ubuntu
         run: |
           sudo apt-get install -y can-utils
@@ -28,10 +28,19 @@ jobs:
 
       - name: Prepare deps
         run: |
-          npm install -g mocha
-          npm install
-      
+          npm i -g npm
+          npm ci
+
+      - name: Compile
+        run: |
+          npm run configure
+          npm run build:all
+
+      - name: Lint
+        run: |
+          npm run lint
+
       - name: Perform tests
         run: |
           sh prepare_test_env.sh
-          NODE_PATH=. mocha
+          npm run test

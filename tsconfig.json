@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2021",
+    "lib": ["ESNext"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "inlineSourceMap": true,
+    "noEmitOnError": true,
+    "outDir": "dist",
+    "declaration": true,
+    "declarationMap": true,
+    "paths": {},
+    "types": [
+      "node"
+    ],
+  },
+  "include": ["src"]
+}

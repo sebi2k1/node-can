@@ -1,7 +1,7 @@
 build
+dist
 node_modules
-npm-debug.log
-build/
-package-lock.json
 coverage
+
+npm-debug.log
 .nyc_output
