@@ -7,12 +7,10 @@
   "description": "A SocketCAN abstraction layer for NodeJS.",
   "version": "4.0.0",
   "license": "MIT",
-  
   "repository": {
     "type": "git",
     "url": "git://github.com/sebi2k1/node-can.git"
   },
-
   "scripts": {
     "configure": "node-gyp configure",
     "build": "node-gyp build",
