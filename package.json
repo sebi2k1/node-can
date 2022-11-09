@@ -17,6 +17,7 @@
     "build:ts": "tsc",
     "build:all": "npm run build && npm run build:ts",
     "lint": "eslint --fix '*/**/*.{js,ts}'",
+    "install": "node-gyp rebuild",
     "test": "mocha"
   },
   "devDependencies": {
@@ -25,7 +26,6 @@
     "@typescript-eslint/eslint-plugin": "5.42.0",
     "@typescript-eslint/parser": "5.42.0",
     "mocha": "10.1.0",
-    "node-gyp": ">=9.3.0",
     "nyc": "^15.0.1",
     "typescript": "4.8.4",
     "eslint": "8.27.0",
@@ -35,10 +35,18 @@
   },
   "dependencies": {
     "nan": "*",
+    "node-gyp": ">=9.3.0",
     "xml2js": ">=0.2.0"
   },
   "main": "dist/socketcan.js",
-  "files": [ "dist", "samples", "src", "native", "docs" ],
+  "files": [
+    "binding.gyp",
+    "dist",
+    "samples",
+    "src",
+    "native",
+    "docs"
+  ],
   "os": [
     "linux"
   ]
