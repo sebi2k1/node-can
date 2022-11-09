@@ -22,7 +22,7 @@ jobs:
       - run: |
           npm i -g npm
           npm ci
-          npm build:ts
+          npm run build:ts
       - uses: JS-DevTools/npm-publish@v1
         with:
           dry-run: true
