@@ -64,7 +64,8 @@ using namespace v8;
 #define rtr_symbol      SYMBOL("rtr")
 #define err_symbol      SYMBOL("err")
 #define data_symbol     SYMBOL("data")
-#define canfd_symbol    SYMBOL("canfd")        
+#define canfd_symbol    SYMBOL("canfd")
+#define fdbrs_symbol    SYMBOL("fd_brs")
 
 /**
  * Basic CAN & CAN_FD access
@@ -375,7 +376,7 @@ on_error:
     CHECK_CONDITION(info[0]->IsObject(), "First argument must be an Object");
     CHECK_CONDITION(hw->IsValid(), "Invalid channel!");
     struct canfd_frame frameFD;                         
-    frameFD.flags = 0; // Flags not used in this function
+    frameFD.flags = 0;
 
     v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
     v8::Local<v8::Object> obj = Nan::To<Object>(info[0]).ToLocalChecked();
@@ -384,6 +385,9 @@ on_error:
 
     if (obj->Get(context, ext_symbol).ToLocalChecked()->IsTrue())
       frameFD.can_id  |= CAN_EFF_FLAG;
+
+    if (obj->Get(context, fdbrs_symbol).ToLocalChecked()->IsTrue())
+      frameFD.flags |= CANFD_BRS;
 
     v8::Local<v8::Value> dataArg = obj->Get(context, data_symbol).ToLocalChecked();
 
