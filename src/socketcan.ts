@@ -22,6 +22,7 @@
 // -----------------------------------------------------------------------------
 // CAN-Object
 
+/// <reference path="./can.d.ts" />
 import * as can from "../build/Release/can.node";
 
 // -----------------------------------------------------------------------------
@@ -30,6 +31,7 @@ import * as can from "../build/Release/can.node";
  * encoded in CAN messages.
  * @module Signals
  */
+/// <reference path="./can_signals.d.ts" />
 import * as _signals from "../build/Release/can_signals.node";
 
 // import * as _signals from "can_signals";
