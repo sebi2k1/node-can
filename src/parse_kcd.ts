@@ -150,6 +150,7 @@ function makeSignalFromXml(
 	if (Array.isArray(labelset)) {
 		const rawLabels = labelset[0]["Label"];
 		if (rawLabels != undefined) {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			rawLabels.forEach((l: any) => {
 				labelSet[l["$"].value] = l["$"].name;
 			});
