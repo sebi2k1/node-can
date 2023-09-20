@@ -112,8 +112,7 @@ Install
 
 There are two options for installing node-can:
 
-1. Clone / download node-can from [GitHub](https://github.com/sebi2k1/node-can),
-	 then:
+1. Clone / download node-can from [GitHub](https://github.com/sebi2k1/node-can), then:
 
 ```shell
     $ npm ci
