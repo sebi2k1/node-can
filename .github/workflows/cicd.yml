@@ -19,6 +19,8 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
 
       - name: Prepare Ubuntu
         run: |
@@ -28,6 +30,7 @@ jobs:
 
       - name: Prepare deps
         run: |
+          npm i -g npm
           npm ci
 
       - name: Compile
