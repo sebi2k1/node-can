@@ -1,11 +1,11 @@
-[![Build Status](https://github.com/sebi2k1/node-can/actions/workflows/cicd.yml/badge.svg?branch=master)](https://travis-ci.com/sebi2k1/node-can)
+![Build Status](https://github.com/sebi2k1/node-can/actions/workflows/cicd.yml/badge.svg?branch=master)
 
 node-can
 ========
 
 This is a NodeJS SocketCAN extension. SocketCAN is a socket-based implementation of the CANbus protocol for Linux system.
 
-This extensions makes it possible to send and receive CAN messages (extended, remote transission) using simple Javascript functions.
+This extensions makes it possible to send and receive CAN messages (extended, remote transission) using simple Javascript/Typescript functions.
 
 Usage (JavaScript)
 -----------------
