@@ -107,6 +107,10 @@ db_instr.send("TankController");
 channel.stop();
 ```
 
+Documentation
+-------
+
+[API documentation](https://sebi2k1.github.io/node-can) hosted on GitHub pages.
 
 Install
 -------
