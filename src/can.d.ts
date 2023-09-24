@@ -43,7 +43,7 @@ declare module "*can.node" {
 		 * Send a CAN message immediately.
 		 *
 		 * PLEASE NOTE: By default, this function may block if the Tx buffer is not available. Please use
-		 * createRawChannelWithOptions({non_block_send: false}) to get non-blocking sending activated.
+		 * createRawChannelWithOptions({non_block_send: true}) to get non-blocking sending activated.
 		 *
 		 * @method send
 		 * @param message {Object} JSON object describing the CAN message, keys are id, length, data {Buffer}, ext or rtr
@@ -54,7 +54,7 @@ declare module "*can.node" {
 		 * Send a CAN FD message immediately.
 		 *
 		 * PLEASE NOTE: By default, this function may block if the Tx buffer is not available. Please use
-		 * createRawChannelWithOptions({non_block_send: false}) to get non-blocking sending activated.
+		 * createRawChannelWithOptions({non_block_send: true}) to get non-blocking sending activated.
 		 *
 		 * PLEASE NOTE: Might fail if underlying device doesnt support CAN FD. Structure is not yet validated.
 		 *
