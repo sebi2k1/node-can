@@ -759,3 +759,5 @@ private:
 
 //-----------------------------------------------------------------------------------------
 Nan::Persistent<v8::Function> RawChannel::constructor;
+
+NAN_MODULE_WORKER_ENABLED(can, RawChannel::Init)
