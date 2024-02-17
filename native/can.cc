@@ -759,5 +759,3 @@ private:
 
 //-----------------------------------------------------------------------------------------
 Nan::Persistent<v8::Function> RawChannel::constructor;
-
-NODE_MODULE(can, RawChannel::Init)
