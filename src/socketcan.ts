@@ -213,6 +213,8 @@ export class Message {
 	readonly mux: kcd.Mux | undefined;
 	readonly signals: Record<string, Signal> = {};
 
+	public updateListeners: CallableFunction[] = [];
+
 	constructor(msgDef: kcd.Message) {
 		/**
 		 * CAN identifier
@@ -280,6 +282,39 @@ export class Message {
 			} else {
 				this.signals[s.name] = new Signal(s);
 			}
+		});
+	}
+
+	/**
+	 * Keep track of listeners who want to be notified if this message is received/decoded.
+	 * @method onMessageUpdate
+	 * @param listener JS callback to get notification
+	 * @for Message
+	 */
+	onMessageUpdate(listener: CallableFunction) {
+		this.updateListeners.push(listener);
+		return listener;
+	}
+
+	/**
+	 * Remove the message listener.
+	 * @method removeListener
+	 * @param listener to be removed
+	 * @for Message
+	 */
+	removeListener(listener: CallableFunction) {
+		let idx = this.updateListeners.indexOf(listener);
+		if (idx >= 0) this.updateListeners.splice(idx, 1);
+	}
+
+	/**
+	 * Called internally to let the message listener know that the message was received.
+	 * @method update
+	 * @for Message
+	 */
+	update() {
+		this.updateListeners.forEach((listener) => {
+			listener(this);
 		});
 	}
 }
@@ -363,6 +398,9 @@ export class DatabaseService {
 
 			s.update(val);
 		}
+
+		// Let the message listener know that the message was received.
+		m.update();
 	}
 
 	/**
