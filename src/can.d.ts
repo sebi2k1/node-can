@@ -4,7 +4,7 @@ declare module "*can.node" {
 		ext: boolean;
 		rtr: boolean;
 		data: Buffer;
-		err: boolean;
+		err?: boolean;
 	}
 
 	export class RawChannel {
