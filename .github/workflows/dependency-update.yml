@@ -1,0 +1,32 @@
+name: Dependency Update
+
+on:
+  schedule:
+    - cron: '0 3 * * 0' # Every Sunday at 3am UTC
+  workflow_dispatch:
+
+jobs:
+  update-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install npm-check-updates
+        run: npm install -g npm-check-updates
+
+      - name: Run npm-check-updates and update package.json
+        run: |
+          ncu -u
+          npm install
+
+      - name: Commit and push changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'chore(deps): update dependencies via ncu'
+          branch: ${{ github.ref_name }}
