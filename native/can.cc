@@ -576,6 +576,7 @@ private:
   void async_channel_stopped()
   {
     Napi::Env env(m_napi_env);
+    Napi::HandleScope scope(env);
 
     for (size_t i = 0; i < m_OnChannelStoppedListeners.size(); i++)
     {
@@ -604,6 +605,7 @@ private:
   void async_receiver_ready()
   {
     Napi::Env env(m_napi_env);
+    Napi::HandleScope scope(env);
 
     struct canfd_frame frame;
     unsigned int framesProcessed = 0;
