@@ -1,10 +1,11 @@
-FROM node:22-bookworm-slim
+FROM node:22-bookworm-slim AS build
 
 RUN apt-get update && apt-get install -y \
     python3 \
     make \
     g++ \
-    can-utils \
+    iproute2 \
+    kmod \
     --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
@@ -14,4 +15,11 @@ COPY native/ ./native/
 COPY src/ ./src/
 COPY tsconfig.json ./
 
-RUN npm install
+RUN npm install && npm run build:ts
+
+COPY test/ ./test/
+
+# Run tests that don't require a CAN interface (vcan unavailable in Docker
+# Desktop's LinuxKit kernel). test-raw_basic and test-signal_generation need
+# vcan0/vcan1 and must be run on real Linux hardware.
+CMD ["npx", "mocha", "test/test-parsing.js", "test/test-signal_conversion.js"]
