@@ -4,15 +4,17 @@
       "target_name": "can",
       "sources": [ "native/can.cc" ],
       "include_dirs": [
-        "<!(node -e \"require('nan')\")"
-      ]
+        "<!@(node -p \"require('node-addon-api').include_dir\")"
+      ],
+      "defines": [ "NAPI_DISABLE_CPP_EXCEPTIONS" ]
     },
     {
       "target_name": "can_signals",
       "sources": [ "native/signals.cc" ],
-	    "include_dirs": [
-        "<!(node -e \"require('nan')\")"
-      ]
+      "include_dirs": [
+        "<!@(node -p \"require('node-addon-api').include_dir\")"
+      ],
+      "defines": [ "NAPI_DISABLE_CPP_EXCEPTIONS" ]
     }
   ]
 }

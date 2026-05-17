@@ -15,18 +15,18 @@
  */
 #define __STDC_LIMIT_MACROS
 
-#include <nan.h>
-#include <node_buffer.h>
+#include <napi.h>
 
 #include <algorithm>
 
 #include <stdint.h>
 #include <string.h>
 
-using namespace v8;
-using namespace node;
-
-#define CHECK_CONDITION(expr, str) if(!(expr)) return Nan::ThrowError(str);
+#define CHECK_CONDITION(expr, str) \
+  if (!(expr)) { \
+    Napi::TypeError::New(env, str).ThrowAsJavaScriptException(); \
+    return env.Undefined(); \
+  }
 
 typedef enum ENDIANESS
 {
@@ -96,51 +96,48 @@ static u_int64_t _getvalue(u_int8_t * data,
 // arg[2] - bitLength one indexed
 // arg[3] - endianess
 // arg[4] - signed flag
-NAN_METHOD(DecodeSignal)
+Napi::Value DecodeSignal(const Napi::CallbackInfo& info)
 {
+    Napi::Env env = info.Env();
     u_int32_t offset, bitLength;
     ENDIANESS endianess;
     bool isSigned = false;
     u_int8_t data[64];           // CANFD size of bufer = 64
 
     CHECK_CONDITION(info.Length() == 5, "Too few arguments");
-    CHECK_CONDITION(info[0]->IsObject(), "Invalid argument");
+    CHECK_CONDITION(info[0].IsBuffer(), "Invalid argument");
+    CHECK_CONDITION(info[1].IsNumber(), "Invalid offset");
+    CHECK_CONDITION(info[2].IsNumber(), "Invalid bit length");
+    CHECK_CONDITION(info[3].IsBoolean(), "Invalid endianess");
+    CHECK_CONDITION(info[4].IsBoolean(), "Invalid signed flag");
 
-    Local<Object> jsData = Nan::To<Object>(info[0]).ToLocalChecked();
+    Napi::Buffer<uint8_t> jsData = info[0].As<Napi::Buffer<uint8_t>>();
 
-    CHECK_CONDITION(Buffer::HasInstance(jsData), "Invalid argument");
-    CHECK_CONDITION(info[1]->IsUint32(), "Invalid offset");
-    CHECK_CONDITION(info[2]->IsUint32(), "Invalid bit length");
-    CHECK_CONDITION(info[3]->IsBoolean(), "Invalid endianess");
-    CHECK_CONDITION(info[4]->IsBoolean(), "Invalid signed flag");
+    offset    = info[1].As<Napi::Number>().Uint32Value();
+    bitLength = info[2].As<Napi::Number>().Uint32Value();
+    endianess = info[3].As<Napi::Boolean>().Value() ? ENDIANESS_INTEL : ENDIANESS_MOTOROLA;
+    isSigned  = info[4].As<Napi::Boolean>().Value();
 
-    v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
-    offset    = info[1]->ToUint32(context).ToLocalChecked()->Value();
-    bitLength = info[2]->ToUint32(context).ToLocalChecked()->Value();
-    endianess = info[3]->IsTrue() ? ENDIANESS_INTEL : ENDIANESS_MOTOROLA;
-    isSigned  = info[4]->IsTrue() ? true : false;
-
-    size_t maxBytes = std::min<u_int32_t>(Buffer::Length(jsData), sizeof(data));
+    size_t maxBytes = std::min<size_t>(jsData.ByteLength(), sizeof(data));
 
     memset(data, 0, sizeof(data));
-    memcpy(data, Buffer::Data(jsData), maxBytes);
+    memcpy(data, jsData.Data(), maxBytes);
 
-    Local<Integer> retval;
     uint64_t val = _getvalue(data, offset, bitLength, endianess);
 
-    // Value shall be interpreted as signed (2's complement)
+    Napi::Value retval;
     if (isSigned && val & (1LLU << (bitLength - 1))) {
         int32_t tmp = -1 * (~((UINT64_MAX << bitLength) | val) + 1);
-        retval = Nan::New(tmp);
+        retval = Napi::Number::New(env, tmp);
     } else {
-        retval = Nan::New((u_int32_t)val);
+        retval = Napi::Number::New(env, (u_int32_t)val);
     }
 
-    Local<Array> raw_values = Nan::New<v8::Array>(2);
-    Nan::Set(raw_values, 0, retval);
-    Nan::Set(raw_values, 1, Nan::New((u_int32_t) (val >> 32)));
+    Napi::Array raw_values = Napi::Array::New(env, 2);
+    raw_values.Set(0u, retval);
+    raw_values.Set(1u, Napi::Number::New(env, (u_int32_t)(val >> 32)));
 
-    info.GetReturnValue().Set(raw_values);
+    return raw_values;
 }
 
 void _setvalue(u_int32_t offset, u_int32_t bitLength, ENDIANESS endianess, u_int8_t data[8], u_int64_t raw_value)
@@ -167,7 +164,6 @@ void _setvalue(u_int32_t offset, u_int32_t bitLength, ENDIANESS endianess, u_int
 
     o &= (uint64_t) ~(m << shift);
     o |= (uint64_t) (raw_value & m) << shift;
-    /* fprintf(stdout, "raw %llu, output %llu, mask %llu shift %llu", raw_value, o, m, shift); */
 
     if (endianess == ENDIANESS_INTEL) {
         o = htole64(o);
@@ -206,55 +202,51 @@ void _setvalue(u_int32_t offset, u_int32_t bitLength, ENDIANESS endianess, u_int
 // arg[4] - sign flag
 // arg[5] - first 4 bytes value to encode
 // arg[6] - second 4 bytes value to encode
-NAN_METHOD(EncodeSignal)
+Napi::Value EncodeSignal(const Napi::CallbackInfo& info)
 {
+    Napi::Env env = info.Env();
     u_int32_t offset, bitLength;
     ENDIANESS endianess;
     u_int8_t data[64];           // CANFD size of bufer = 64
     u_int64_t raw_value;
 
     CHECK_CONDITION(info.Length() >= 6, "Too few arguments");
-    CHECK_CONDITION(info[0]->IsObject(), "Invalid argument");
+    CHECK_CONDITION(info[0].IsBuffer(), "Invalid argument");
+    CHECK_CONDITION(info[1].IsNumber(), "Invalid offset");
+    CHECK_CONDITION(info[2].IsNumber(), "Invalid bit length");
+    CHECK_CONDITION(info[3].IsBoolean(), "Invalid endianess");
+    CHECK_CONDITION(info[4].IsBoolean(), "Invalid sign flag");
+    CHECK_CONDITION(info[5].IsNumber() || info[5].IsBoolean(), "Invalid value");
 
-    Local<Object> jsData = Nan::To<Object>(info[0]).ToLocalChecked();
+    Napi::Buffer<uint8_t> jsData = info[0].As<Napi::Buffer<uint8_t>>();
 
-    CHECK_CONDITION(Buffer::HasInstance(jsData), "Invalid argument");
-    CHECK_CONDITION(info[1]->IsUint32(), "Invalid offset");
-    CHECK_CONDITION(info[2]->IsUint32(), "Invalid bit length");
-    CHECK_CONDITION(info[3]->IsBoolean(), "Invalid endianess");
-    CHECK_CONDITION(info[4]->IsBoolean(), "Invalid sign flag");
-    CHECK_CONDITION(info[5]->IsNumber() || info[5]->IsBoolean(), "Invalid value");
+    offset    = info[1].As<Napi::Number>().Uint32Value();
+    bitLength = info[2].As<Napi::Number>().Uint32Value();
+    endianess = info[3].As<Napi::Boolean>().Value() ? ENDIANESS_INTEL : ENDIANESS_MOTOROLA;
 
-    Local<Context> context = info.GetIsolate()->GetCurrentContext();
-    offset = info[1]->ToUint32(context).ToLocalChecked()->Value();
-    bitLength = info[2]->ToUint32(context).ToLocalChecked()->Value();
-    endianess = info[3]->IsTrue() ? ENDIANESS_INTEL : ENDIANESS_MOTOROLA;
-
-    raw_value = info[5]->ToNumber(context).ToLocalChecked()->ToUint32(context).ToLocalChecked()->Value();
-    if (info[6]->IsNumber() || info[6]->IsBoolean()) {
-      raw_value += ((u_int64_t) info[6]->ToNumber(context).ToLocalChecked()->ToUint32(context).ToLocalChecked()->Value()) << 32;
+    raw_value = info[5].As<Napi::Number>().Uint32Value();
+    if (info.Length() > 6 && (info[6].IsNumber() || info[6].IsBoolean())) {
+        raw_value += ((u_int64_t)info[6].As<Napi::Number>().Uint32Value()) << 32;
     }
 
-    size_t maxBytes = std::min<u_int64_t>(Buffer::Length(jsData), sizeof(data));
+    size_t maxBytes = std::min<size_t>(jsData.ByteLength(), sizeof(data));
 
-    // Since call may not have supplied enough bytes we have to make a temp copy
-    memcpy(data, Buffer::Data(jsData), maxBytes);
+    memcpy(data, jsData.Data(), maxBytes);
 
     _setvalue(offset, bitLength, endianess, data, raw_value);
 
-    memcpy(Buffer::Data(jsData), data, maxBytes);
+    memcpy(jsData.Data(), data, maxBytes);
 
-    info.GetReturnValue().Set(Nan::Undefined());
+    return env.Undefined();
 }
 
 //-----------------------------------------------------------------------------------------
 
-NAN_MODULE_INIT(InitAll)
+Napi::Object InitAll(Napi::Env env, Napi::Object exports)
 {
-  Nan::Set(target, Nan::New<String>("decodeSignal").ToLocalChecked(),
-    Nan::GetFunction(Nan::New<FunctionTemplate>(DecodeSignal)).ToLocalChecked());
-  Nan::Set(target, Nan::New<String>("encodeSignal").ToLocalChecked(),
-    Nan::GetFunction(Nan::New<FunctionTemplate>(EncodeSignal)).ToLocalChecked());
+    exports.Set("decodeSignal", Napi::Function::New(env, DecodeSignal));
+    exports.Set("encodeSignal", Napi::Function::New(env, EncodeSignal));
+    return exports;
 }
 
-NODE_MODULE(can_signals, InitAll);
+NODE_API_MODULE(can_signals, InitAll)
