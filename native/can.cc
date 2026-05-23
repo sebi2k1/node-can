@@ -238,10 +238,14 @@ private:
   {
     CHECK_CONDITION(IsValid(), "Cannot start invalid channel");
 
-    uv_async_init(uv_default_loop(), &m_AsyncReceiverReady, async_receiver_ready_cb);
+    Napi::Env env = info.Env();
+    uv_loop_t* loop;
+    napi_get_uv_event_loop(env, &loop);
+
+    uv_async_init(loop, &m_AsyncReceiverReady, async_receiver_ready_cb);
     m_AsyncReceiverReady.data = this;
 
-    uv_async_init(uv_default_loop(), &m_AsyncChannelStopped, async_channel_stopped_cb);
+    uv_async_init(loop, &m_AsyncChannelStopped, async_channel_stopped_cb);
     m_AsyncChannelStopped.data = this;
 
     m_ThreadStopRequested = false;
