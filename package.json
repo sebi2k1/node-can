@@ -5,7 +5,7 @@
     "email": "sebastian@sebastianhaas.info"
   },
   "description": "A SocketCAN abstraction layer for NodeJS.",
-  "version": "4.0.7",
+  "version": "4.1.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -18,10 +18,11 @@
     "build:all": "npm run build && npm run build:ts",
     "lint": "eslint --fix '*/**/*.{js,ts}'",
     "install": "node-gyp rebuild",
+    "prepare": "npm run build:ts",
     "test": "mocha"
   },
   "devDependencies": {
-    "@types/node": "^16.18.3",
+    "@types/node": "^22.0.0",
     "@types/xml2js": "^0.4.11",
     "@typescript-eslint/eslint-plugin": "5.42.0",
     "@typescript-eslint/parser": "5.42.0",
@@ -31,10 +32,10 @@
     "mocha": "10.8.2",
     "nyc": "^15.0.1",
     "prettier": "^2.4.1",
-    "typescript": "4.8.4"
+    "typescript": "^5.4.0"
   },
   "dependencies": {
-    "nan": "^2.23.0",
+    "node-addon-api": "^8.0.0",
     "node-gyp": ">=9.3.0",
     "xml2js": ">=0.2.0"
   },
@@ -47,6 +48,9 @@
     "native",
     "docs"
   ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "os": [
     "linux"
   ]

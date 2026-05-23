@@ -14,6 +14,7 @@
     "isolatedModules": true,
     "inlineSourceMap": true,
     "noEmitOnError": true,
+    "rootDir": "src",
     "outDir": "dist",
     "declaration": true,
     "declarationMap": true,

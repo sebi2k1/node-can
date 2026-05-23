@@ -1,0 +1,17 @@
+FROM node:22-bookworm-slim
+
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    can-utils \
+    --no-install-recommends && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+COPY package.json package-lock.json binding.gyp ./
+COPY native/ ./native/
+COPY src/ ./src/
+COPY tsconfig.json ./
+
+RUN npm install
