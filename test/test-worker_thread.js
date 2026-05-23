@@ -3,19 +3,21 @@
 var assert = require('assert');
 var { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
 
-// When this file is loaded as a Worker, run the receiver side.
+// When loaded as a Worker, run the receiver side.
 if (!isMainThread) {
   var can = require('../dist/socketcan');
   var ch = can.createRawChannel(workerData.iface);
   ch.addListener('onMessage', function(msg) {
     parentPort.postMessage({ type: 'msg', id: msg.id, data: Array.from(msg.data) });
+    // Defer stop so async_receiver_ready() finishes its current iteration first.
+    setImmediate(function() { ch.stop(); });
   });
   ch.start();
   parentPort.postMessage({ type: 'ready' });
   return;
 }
 
-// Main thread: register mocha tests.
+// Main thread: mocha tests.
 describe('RawChannel in worker_threads', function() {
   it('should receive messages inside a worker without crashing', function(done) {
     var can = require('../dist/socketcan');
@@ -35,9 +37,11 @@ describe('RawChannel in worker_threads', function() {
         assert.equal(msg.type, 'msg');
         assert.equal(msg.id, 0x42);
         assert.deepEqual(msg.data, [0xDE, 0xAD, 0xBE, 0xEF]);
-        worker.terminate();
-        sender.stop();
-        done();
+        // Wait for worker to exit naturally (ch.stop() closes its uv handles).
+        worker.once('exit', function() {
+          sender.stop();
+          done();
+        });
       });
     });
   });
