@@ -2,6 +2,20 @@
 
 ## [4.1.0] - 2026-05-17
 
+### Fixed
+- **Regression vs 4.0.7**: `onMessage` callbacks are now invoked via
+  `napi_make_callback` instead of plain `napi_call_function`. This restores
+  the behaviour of the old NaN implementation, which called
+  `node::MakeCallback` (and therefore ran a microtask checkpoint and fired
+  async hooks after each callback). Without this, adapters that queue work
+  via Promises or `setImmediate` inside `onMessage` could not keep up with
+  incoming frames, producing "evaluation overloaded" warnings and "bad frame"
+  errors (reported against ioBroker.e3oncan).
+- Exceptions thrown by `onMessage` or `onStopped` callbacks are now forwarded
+  to Node.js via `napi_fatal_exception` (matching the old `Nan::FatalException`
+  behaviour) instead of being silently dropped with the JS exception left
+  pending, which could corrupt subsequent frame objects.
+
 ### Changed
 - Migrated native addon from `nan` to `node-addon-api` (N-API). The binary
   is now ABI-stable across Node.js major versions: a module compiled for

@@ -97,7 +97,7 @@ public:
     : Napi::ObjectWrap<RawChannel>(info),
       m_Thread(0), m_Name(""), m_ReadPending(false), m_SocketFd(-1),
       m_ThreadStopRequested(false), m_TimestampsSupported(false),
-      m_NonBlockingSend(false), m_napi_env(nullptr)
+      m_NonBlockingSend(false), m_napi_env(nullptr), m_async_ctx(nullptr)
   {
     Napi::Env env = info.Env();
 
@@ -247,6 +247,13 @@ private:
 
     uv_async_init(loop, &m_AsyncChannelStopped, async_channel_stopped_cb);
     m_AsyncChannelStopped.data = this;
+
+    // Create an async context so napi_make_callback runs microtask checkpoints
+    // and fires async hooks after each onMessage callback, matching the behaviour
+    // of the old NaN implementation (which used node::MakeCallback internally).
+    napi_value resource_name;
+    napi_create_string_utf8(env, "socketcan:RawChannel:onMessage", NAPI_AUTO_LENGTH, &resource_name);
+    napi_async_init(env, (napi_value)info.This(), resource_name, &m_async_ctx);
 
     m_ThreadStopRequested = false;
     pthread_create(&m_Thread, NULL, c_thread_entry, this);
@@ -500,6 +507,7 @@ private:
 
   // Stored for use in uv_async callbacks (always invoked on the main thread)
   napi_env m_napi_env;
+  napi_async_context m_async_ctx;
 
   static void * c_thread_entry(void *_this) { assert(_this); reinterpret_cast<RawChannel *>(_this)->ThreadEntry(); return NULL; }
 
@@ -592,8 +600,12 @@ private:
       else
         fn.Call(l->handle.Value(), {});
 
-      if (env.IsExceptionPending())
+      if (env.IsExceptionPending()) {
+        napi_value exception;
+        napi_get_and_clear_last_exception(env, &exception);
+        napi_fatal_exception(env, exception);
         break;
+      }
     }
 
     if (m_Thread)
@@ -603,11 +615,18 @@ private:
       uv_close((uv_handle_t *)&m_AsyncChannelStopped, NULL);
     }
 
+    if (m_async_ctx) {
+      napi_async_destroy(m_napi_env, m_async_ctx);
+      m_async_ctx = nullptr;
+    }
+
     Unref();
   }
 
   void async_receiver_ready()
   {
+    if (!m_async_ctx) return;
+
     Napi::Env env(m_napi_env);
     Napi::HandleScope scope(env);
 
@@ -643,21 +662,33 @@ private:
 
       obj.Set("data", Napi::Buffer<char>::Copy(env, (char *)frame.data, frame.len & 0x7f));
 
+      bool callback_failed = false;
       for (size_t i = 0; i < m_OnMessageListeners.size(); i++)
       {
         struct listener *l = m_OnMessageListeners.at(i);
-        Napi::Function fn = l->callback.Value();
 
-        if (l->handle.IsEmpty())
-          fn.Call(env.Global(), {obj});
-        else
-          fn.Call(l->handle.Value(), {obj});
+        // Use napi_make_callback instead of plain fn.Call() so that
+        // Node.js runs a microtask checkpoint and fires async hooks
+        // after each invocation, matching the old NaN behaviour
+        // (Nan::Callback::Call used node::MakeCallback internally).
+        napi_value recv_val = l->handle.IsEmpty()
+            ? (napi_value)env.Global()
+            : (napi_value)l->handle.Value();
+        napi_value fn_val   = (napi_value)l->callback.Value();
+        napi_value arg      = (napi_value)obj;
+        napi_value result;
+        napi_make_callback(env, m_async_ctx, recv_val, fn_val, 1, &arg, &result);
 
-        if (env.IsExceptionPending())
+        if (env.IsExceptionPending()) {
+          napi_value exception;
+          napi_get_and_clear_last_exception(env, &exception);
+          napi_fatal_exception(env, exception);
+          callback_failed = true;
           break;
+        }
       }
 
-      if (env.IsExceptionPending())
+      if (callback_failed)
         break;
 
       if (++framesProcessed > MAX_FRAMES_PER_ASYNC_EVENT)
