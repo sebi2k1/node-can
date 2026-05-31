@@ -3,6 +3,12 @@ var assert = require('assert');
 var signals = require('../build/Release/can_signals');
 var buffer = require('buffer');
 
+// SIGNAL_TYPE constants (mirror the native enum in signals.cc)
+var SIGNAL_UNSIGNED = 0;
+var SIGNAL_SIGNED   = 1;
+var SIGNAL_FLOAT32  = 2;
+var SIGNAL_FLOAT64  = 3;
+
 describe('signals', function() {
     it('should properly encode', function(done) {
         data = Buffer.from([0, 0, 0, 0, 0, 0, 0, 0]);
@@ -153,24 +159,20 @@ describe('signals', function() {
         done();
     });
 
-    // SIGNAL_TYPE constants: 0=unsigned, 1=signed, 2=float32, 3=float64
-    const FLOAT32 = 2;
-    const FLOAT64 = 3;
-
     it('should encode float32 little endian', function(done) {
         // 1.0f = 0x3F800000 → LE bytes [0x00, 0x00, 0x80, 0x3F]
         data = Buffer.alloc(8);
-        signals.encodeSignal(data, 0, 32, true, FLOAT32, 1.0);
+        signals.encodeSignal(data, 0, 32, true, SIGNAL_FLOAT32, 1.0);
         assert.deepEqual(data, Buffer.from([0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00]));
 
         // -1.0f = 0xBF800000 → LE bytes [0x00, 0x00, 0x80, 0xBF]
         data = Buffer.alloc(8);
-        signals.encodeSignal(data, 0, 32, true, FLOAT32, -1.0);
+        signals.encodeSignal(data, 0, 32, true, SIGNAL_FLOAT32, -1.0);
         assert.deepEqual(data, Buffer.from([0x00, 0x00, 0x80, 0xBF, 0x00, 0x00, 0x00, 0x00]));
 
         // float at bit offset 32 (bytes 4–7)
         data = Buffer.alloc(8);
-        signals.encodeSignal(data, 32, 32, true, FLOAT32, 1.0);
+        signals.encodeSignal(data, 32, 32, true, SIGNAL_FLOAT32, 1.0);
         assert.deepEqual(data, Buffer.from([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F]));
 
         done();
@@ -179,15 +181,15 @@ describe('signals', function() {
     it('should decode float32 little endian', function(done) {
         // 1.0f LE bytes [0x00, 0x00, 0x80, 0x3F]
         data = Buffer.from([0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00]);
-        assert.deepEqual(signals.decodeSignal(data, 0, 32, true, FLOAT32), [1.0, 0]);
+        assert.deepEqual(signals.decodeSignal(data, 0, 32, true, SIGNAL_FLOAT32), [1.0, 0]);
 
         // -1.0f LE bytes [0x00, 0x00, 0x80, 0xBF]
         data = Buffer.from([0x00, 0x00, 0x80, 0xBF, 0x00, 0x00, 0x00, 0x00]);
-        assert.deepEqual(signals.decodeSignal(data, 0, 32, true, FLOAT32), [-1.0, 0]);
+        assert.deepEqual(signals.decodeSignal(data, 0, 32, true, SIGNAL_FLOAT32), [-1.0, 0]);
 
         // float at bit offset 32
         data = Buffer.from([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3F]);
-        assert.deepEqual(signals.decodeSignal(data, 32, 32, true, FLOAT32), [1.0, 0]);
+        assert.deepEqual(signals.decodeSignal(data, 32, 32, true, SIGNAL_FLOAT32), [1.0, 0]);
 
         done();
     });
@@ -195,17 +197,17 @@ describe('signals', function() {
     it('should encode float32 big endian', function(done) {
         // 1.0f = 0x3F800000 → BE bytes [0x3F, 0x80, 0x00, 0x00]
         data = Buffer.alloc(8);
-        signals.encodeSignal(data, 0, 32, false, FLOAT32, 1.0);
+        signals.encodeSignal(data, 0, 32, false, SIGNAL_FLOAT32, 1.0);
         assert.deepEqual(data, Buffer.from([0x3F, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]));
 
         // -1.0f = 0xBF800000 → BE bytes [0xBF, 0x80, 0x00, 0x00]
         data = Buffer.alloc(8);
-        signals.encodeSignal(data, 0, 32, false, FLOAT32, -1.0);
+        signals.encodeSignal(data, 0, 32, false, SIGNAL_FLOAT32, -1.0);
         assert.deepEqual(data, Buffer.from([0xBF, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]));
 
         // float at bit offset 32 (bytes 4–7)
         data = Buffer.alloc(8);
-        signals.encodeSignal(data, 32, 32, false, FLOAT32, 1.0);
+        signals.encodeSignal(data, 32, 32, false, SIGNAL_FLOAT32, 1.0);
         assert.deepEqual(data, Buffer.from([0x00, 0x00, 0x00, 0x00, 0x3F, 0x80, 0x00, 0x00]));
 
         done();
@@ -214,15 +216,15 @@ describe('signals', function() {
     it('should decode float32 big endian', function(done) {
         // 1.0f BE bytes [0x3F, 0x80, 0x00, 0x00]
         data = Buffer.from([0x3F, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
-        assert.deepEqual(signals.decodeSignal(data, 0, 32, false, FLOAT32), [1.0, 0]);
+        assert.deepEqual(signals.decodeSignal(data, 0, 32, false, SIGNAL_FLOAT32), [1.0, 0]);
 
         // -1.0f BE bytes [0xBF, 0x80, 0x00, 0x00]
         data = Buffer.from([0xBF, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
-        assert.deepEqual(signals.decodeSignal(data, 0, 32, false, FLOAT32), [-1.0, 0]);
+        assert.deepEqual(signals.decodeSignal(data, 0, 32, false, SIGNAL_FLOAT32), [-1.0, 0]);
 
         // float at bit offset 32
         data = Buffer.from([0x00, 0x00, 0x00, 0x00, 0x3F, 0x80, 0x00, 0x00]);
-        assert.deepEqual(signals.decodeSignal(data, 32, 32, false, FLOAT32), [1.0, 0]);
+        assert.deepEqual(signals.decodeSignal(data, 32, 32, false, SIGNAL_FLOAT32), [1.0, 0]);
 
         done();
     });
@@ -230,8 +232,8 @@ describe('signals', function() {
     it('should round-trip float32 for values not exactly representable', function(done) {
         const val = Math.fround(3.14); // exact float32 representation
         data = Buffer.alloc(8);
-        signals.encodeSignal(data, 0, 32, true, FLOAT32, val);
-        const result = signals.decodeSignal(data, 0, 32, true, FLOAT32);
+        signals.encodeSignal(data, 0, 32, true, SIGNAL_FLOAT32, val);
+        const result = signals.decodeSignal(data, 0, 32, true, SIGNAL_FLOAT32);
         assert.strictEqual(result[0], val);
         done();
     });
@@ -239,7 +241,7 @@ describe('signals', function() {
     it('should encode float64 little endian', function(done) {
         // 1.0 double = 0x3FF0000000000000 → LE bytes [0x00,0x00,0x00,0x00,0x00,0x00,0xF0,0x3F]
         data = Buffer.alloc(8);
-        signals.encodeSignal(data, 0, 64, true, FLOAT64, 1.0);
+        signals.encodeSignal(data, 0, 64, true, SIGNAL_FLOAT64, 1.0);
         assert.deepEqual(data, Buffer.from([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F]));
 
         done();
@@ -247,7 +249,7 @@ describe('signals', function() {
 
     it('should decode float64 little endian', function(done) {
         data = Buffer.from([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F]);
-        assert.deepEqual(signals.decodeSignal(data, 0, 64, true, FLOAT64), [1.0, 0]);
+        assert.deepEqual(signals.decodeSignal(data, 0, 64, true, SIGNAL_FLOAT64), [1.0, 0]);
 
         done();
     });
@@ -255,7 +257,7 @@ describe('signals', function() {
     it('should encode float64 big endian', function(done) {
         // 1.0 double BE bytes [0x3F,0xF0,0x00,0x00,0x00,0x00,0x00,0x00]
         data = Buffer.alloc(8);
-        signals.encodeSignal(data, 0, 64, false, FLOAT64, 1.0);
+        signals.encodeSignal(data, 0, 64, false, SIGNAL_FLOAT64, 1.0);
         assert.deepEqual(data, Buffer.from([0x3F, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]));
 
         done();
@@ -263,7 +265,7 @@ describe('signals', function() {
 
     it('should decode float64 big endian', function(done) {
         data = Buffer.from([0x3F, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
-        assert.deepEqual(signals.decodeSignal(data, 0, 64, false, FLOAT64), [1.0, 0]);
+        assert.deepEqual(signals.decodeSignal(data, 0, 64, false, SIGNAL_FLOAT64), [1.0, 0]);
 
         done();
     });
@@ -271,9 +273,57 @@ describe('signals', function() {
     it('should round-trip float64', function(done) {
         const val = 3.141592653589793;
         data = Buffer.alloc(8);
-        signals.encodeSignal(data, 0, 64, true, FLOAT64, val);
-        const result = signals.decodeSignal(data, 0, 64, true, FLOAT64);
+        signals.encodeSignal(data, 0, 64, true, SIGNAL_FLOAT64, val);
+        const result = signals.decodeSignal(data, 0, 64, true, SIGNAL_FLOAT64);
         assert.strictEqual(result[0], val);
+        done();
+    });
+
+    it('should round-trip float64 with negative value', function(done) {
+        const val = -2.718281828459045;
+        data = Buffer.alloc(8);
+        signals.encodeSignal(data, 0, 64, true, SIGNAL_FLOAT64, val);
+        assert.strictEqual(signals.decodeSignal(data, 0, 64, true, SIGNAL_FLOAT64)[0], val);
+        // big-endian too
+        data = Buffer.alloc(8);
+        signals.encodeSignal(data, 0, 64, false, SIGNAL_FLOAT64, val);
+        assert.strictEqual(signals.decodeSignal(data, 0, 64, false, SIGNAL_FLOAT64)[0], val);
+        done();
+    });
+
+    it('should handle IEEE-754 special values for float32', function(done) {
+        for (const val of [Infinity, -Infinity, NaN]) {
+            data = Buffer.alloc(8);
+            signals.encodeSignal(data, 0, 32, true, SIGNAL_FLOAT32, val);
+            const decoded = signals.decodeSignal(data, 0, 32, true, SIGNAL_FLOAT32)[0];
+            if (isNaN(val)) {
+                assert.ok(isNaN(decoded), 'NaN should round-trip as NaN');
+            } else {
+                assert.strictEqual(decoded, val);
+            }
+        }
+        done();
+    });
+
+    it('should handle IEEE-754 special values for float64', function(done) {
+        for (const val of [Infinity, -Infinity, NaN]) {
+            data = Buffer.alloc(8);
+            signals.encodeSignal(data, 0, 64, true, SIGNAL_FLOAT64, val);
+            const decoded = signals.decodeSignal(data, 0, 64, true, SIGNAL_FLOAT64)[0];
+            if (isNaN(val)) {
+                assert.ok(isNaN(decoded), 'NaN should round-trip as NaN');
+            } else {
+                assert.strictEqual(decoded, val);
+            }
+        }
+        done();
+    });
+
+    it('should decode correctly when wrong bitLength is passed for float32', function(done) {
+        // effectiveBitLength override: even if caller passes 16, we should read 32 bits
+        data = Buffer.from([0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x00]);
+        const result = signals.decodeSignal(data, 0, 16 /* wrong */, true, SIGNAL_FLOAT32);
+        assert.strictEqual(result[0], 1.0);
         done();
     });
 });

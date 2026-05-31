@@ -42,10 +42,11 @@ import * as kcd from "./parse_kcd";
 
 // Maps KCD type string to the numeric SIGNAL_TYPE expected by the native addon.
 // 0=unsigned, 1=signed, 2=float32 (single), 3=float64 (double)
-function signalTypeCode(type: string): number {
+function signalTypeCode(type: string): 0 | 1 | 2 | 3 {
 	if (type === "signed") return 1;
 	if (type === "single") return 2;
 	if (type === "double") return 3;
+	if (type !== "unsigned") console.warn(`socketcan: unknown signal type "${type}", treating as unsigned`);
 	return 0;
 }
 
