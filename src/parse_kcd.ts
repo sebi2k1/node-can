@@ -84,7 +84,7 @@ export class Signal {
 		public slope: number = 1.0,
 		public intercept: number = 0.0,
 		public unit: string = "",
-		public type: "signed" | "unsigned" = "unsigned",
+		public type: "signed" | "unsigned" | "single" | "double" = "unsigned",
 		public defaultValue: number = 0.0,
 		public minValue?: number,
 		public maxValue?: number
