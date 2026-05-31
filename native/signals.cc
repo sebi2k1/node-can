@@ -136,6 +136,8 @@ Napi::Value DecodeSignal(const Napi::CallbackInfo& info)
     uint32_t width = signal_type_bit_width(signalType);
     uint32_t effectiveBitLength = (width > 0) ? width : bitLength;
 
+    CHECK_CONDITION(effectiveBitLength > 0 && effectiveBitLength <= 64, "bitLength must be in range 1..64");
+
     size_t maxBytes = std::min<size_t>(jsData.ByteLength(), sizeof(data));
 
     std::memset(data, 0, sizeof(data));
@@ -251,6 +253,7 @@ Napi::Value EncodeSignal(const Napi::CallbackInfo& info)
         _setvalue(offset, signal_type_bit_width(SIGNAL_TYPE::FLOAT64), endianess, data,
                   std::bit_cast<uint64_t>(d));
     } else {
+        CHECK_CONDITION(bitLength > 0 && bitLength <= 64, "bitLength must be in range 1..64");
         uint64_t raw_value = static_cast<uint64_t>(info[5].As<Napi::Number>().Uint32Value());
         if (info.Length() > 6 && (info[6].IsNumber() || info[6].IsBoolean())) {
             raw_value += static_cast<uint64_t>(info[6].As<Napi::Number>().Uint32Value()) << 32;

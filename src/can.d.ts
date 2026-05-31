@@ -12,7 +12,7 @@ declare module "*can.node" {
 			name: string,
 			timestamps?: boolean,
 			protocol?: number,
-			non_block_send?: boolean
+			non_block_send?: boolean,
 		);
 
 		/**
@@ -25,7 +25,7 @@ declare module "*can.node" {
 		addListener(
 			event: string,
 			callback: CallableFunction,
-			instance?: object
+			instance?: object,
 		): void;
 
 		/**

@@ -307,6 +307,7 @@ private:
     CHECK_CONDITION(dataArg.IsBuffer(), "Data field must be a Buffer");
 
     Napi::Buffer<uint8_t> dataBuf = dataArg.As<Napi::Buffer<uint8_t>>();
+    CHECK_CONDITION(dataBuf.ByteLength() <= CAN_MAX_DLEN, "Data buffer exceeds CAN frame size");
     frame.can_dlc = dataBuf.ByteLength();
     memcpy(frame.data, dataBuf.Data(), frame.can_dlc);
 
