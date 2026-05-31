@@ -202,13 +202,13 @@ export class Signal extends kcd.Signal {
 	 */
 	update(newValue: number) {
 		// TODO: Move this block to a `Value.isValid(v)` function?
-		if (this.maxValue && newValue > this.maxValue) {
+		if (this.maxValue != null && newValue > this.maxValue) {
 			console.error(
 				`ERROR : ${this.name} value = ${newValue} is out of bounds > ${this.maxValue}`,
 			);
 		}
 
-		if (this.minValue && newValue < this.minValue) {
+		if (this.minValue != null && newValue < this.minValue) {
 			console.error(
 				`ERROR : ${this.name} value = ${newValue} is out of bounds < ${this.minValue}`,
 			);
@@ -407,7 +407,7 @@ export class DatabaseService {
 				true,
 				false,
 			);
-			mux_count = b_mux[0] + (b_mux[1] << 32);
+			mux_count = b_mux[0] + b_mux[1] * TWO_TO_32;
 		}
 
 		// Let the C-Portition extract and convert the signal
@@ -427,7 +427,7 @@ export class DatabaseService {
 				signalTypeCode(s.type),
 			);
 
-			let val = ret[0] + (ret[1] << 32);
+			let val = ret[0] + ret[1] * TWO_TO_32;
 
 			if (s.slope) val *= s.slope;
 

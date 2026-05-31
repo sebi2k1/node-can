@@ -326,4 +326,46 @@ describe('signals', function() {
         assert.strictEqual(result[0], 1.0);
         done();
     });
+
+    it('should throw on bitLength 0 in decodeSignal', function(done) {
+        data = Buffer.from([0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE]);
+        assert.throws(function() {
+            signals.decodeSignal(data, 0, 0, true, SIGNAL_UNSIGNED);
+        }, /bitLength must be in range 1\.\.64/);
+        done();
+    });
+
+    it('should throw on bitLength 65 in decodeSignal', function(done) {
+        data = Buffer.from([0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE]);
+        assert.throws(function() {
+            signals.decodeSignal(data, 0, 65, true, SIGNAL_UNSIGNED);
+        }, /bitLength must be in range 1\.\.64/);
+        done();
+    });
+
+    it('should throw on bitLength 0 in encodeSignal', function(done) {
+        data = Buffer.alloc(8);
+        assert.throws(function() {
+            signals.encodeSignal(data, 0, 0, true, SIGNAL_UNSIGNED, 1);
+        }, /bitLength must be in range 1\.\.64/);
+        done();
+    });
+
+    it('should throw on bitLength 65 in encodeSignal', function(done) {
+        data = Buffer.alloc(8);
+        assert.throws(function() {
+            signals.encodeSignal(data, 0, 65, true, SIGNAL_UNSIGNED, 1);
+        }, /bitLength must be in range 1\.\.64/);
+        done();
+    });
+
+    it('should return correct high word for 64-bit unsigned decode (fix << 32 bug)', function(done) {
+        // Value: 0xCAFEBABE_EFBEADDE — high word 0xCAFEBABE, low word 0xEFBEADDE
+        data = Buffer.from([0xDE, 0xAD, 0xBE, 0xEF, 0xBE, 0xBA, 0xFE, 0xCA]);
+        var result = signals.decodeSignal(data, 0, 64, true, SIGNAL_UNSIGNED);
+        // result[1] is the high 32 bits; must not be zero
+        assert.strictEqual(result[1], 0xCAFEBABE);
+        assert.strictEqual(result[0], 0xEFBEADDE);
+        done();
+    });
 });
