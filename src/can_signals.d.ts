@@ -1,7 +1,7 @@
 declare module "*can_signals.node" {
-	// Signal type constants passed as the 5th argument.
+	// Numeric signal type passed as the 5th argument to encode/decode.
+	// Use the SignalType constants exported from socketcan.ts rather than raw numbers.
 	// Accepts a boolean for backward compatibility (false=unsigned, true=signed).
-	// 0 = unsigned, 1 = signed, 2 = float32 (single), 3 = float64 (double)
 	type SignalType = boolean | 0 | 1 | 2 | 3;
 
 	// Decode signal according description

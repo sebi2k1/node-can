@@ -72,6 +72,8 @@ export class Node {
 	) {}
 }
 
+export type SignalType = "unsigned" | "signed" | "single" | "double";
+
 export class Signal {
 	constructor(
 		public name: string,
@@ -84,7 +86,7 @@ export class Signal {
 		public slope: number = 1.0,
 		public intercept: number = 0.0,
 		public unit: string = "",
-		public type: "signed" | "unsigned" | "single" | "double" = "unsigned",
+		public type: SignalType = "unsigned",
 		public defaultValue: number = 0.0,
 		public minValue?: number,
 		public maxValue?: number
