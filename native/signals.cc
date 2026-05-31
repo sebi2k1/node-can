@@ -46,7 +46,10 @@ static SIGNAL_TYPE _parse_signal_type(const Napi::Value& v)
 {
     if (v.IsBoolean())
         return v.As<Napi::Boolean>().Value() ? SIGNAL_TYPE_SIGNED : SIGNAL_TYPE_UNSIGNED;
-    return (SIGNAL_TYPE)v.As<Napi::Number>().Uint32Value();
+    u_int32_t n = v.As<Napi::Number>().Uint32Value();
+    if (n > SIGNAL_TYPE_FLOAT64)
+        return SIGNAL_TYPE_UNSIGNED;   // safe fallback for unknown values
+    return (SIGNAL_TYPE)n;
 }
 
 //-----------------------------------------------------------------------------------------
@@ -116,7 +119,7 @@ Napi::Value DecodeSignal(const Napi::CallbackInfo& info)
     Napi::Env env = info.Env();
     u_int32_t offset, bitLength;
     ENDIANESS endianess;
-    u_int8_t data[64];           // CANFD size of bufer = 64
+    u_int8_t data[64];           // CANFD buffer size (supports CAN FD)
 
     CHECK_CONDITION(info.Length() == 5, "Too few arguments");
     CHECK_CONDITION(info[0].IsBuffer(), "Invalid argument");
@@ -132,18 +135,24 @@ Napi::Value DecodeSignal(const Napi::CallbackInfo& info)
     endianess  = info[3].As<Napi::Boolean>().Value() ? ENDIANESS_INTEL : ENDIANESS_MOTOROLA;
     SIGNAL_TYPE signalType = _parse_signal_type(info[4]);
 
+    // Float types have a fixed width; use that instead of the caller-supplied
+    // bitLength so a mismatch can never produce a silently wrong result.
+    u_int32_t effectiveBitLength = (signalType == SIGNAL_TYPE_FLOAT32) ? 32u
+                                 : (signalType == SIGNAL_TYPE_FLOAT64) ? 64u
+                                 : bitLength;
+
     size_t maxBytes = std::min<size_t>(jsData.ByteLength(), sizeof(data));
 
     memset(data, 0, sizeof(data));
     memcpy(data, jsData.Data(), maxBytes);
 
-    uint64_t val = _getvalue(data, offset, bitLength, endianess);
+    uint64_t val = _getvalue(data, offset, effectiveBitLength, endianess);
 
     Napi::Value retval;
     if (signalType == SIGNAL_TYPE_FLOAT32) {
         // Reinterpret the 32 raw bits as IEEE-754 single precision.
         // _getvalue already applied the correct byte order, so a plain
-        // memcpy into a float gives the right value on any host endianess.
+        // memcpy into a float gives the right value on any host endianness.
         u_int32_t raw = (u_int32_t)val;
         float f;
         memcpy(&f, &raw, sizeof(f));
@@ -236,7 +245,7 @@ Napi::Value EncodeSignal(const Napi::CallbackInfo& info)
     Napi::Env env = info.Env();
     u_int32_t offset, bitLength;
     ENDIANESS endianess;
-    u_int8_t data[64];           // CANFD size of bufer = 64
+    u_int8_t data[64];           // CANFD buffer size (supports CAN FD)
 
     CHECK_CONDITION(info.Length() >= 6, "Too few arguments");
     CHECK_CONDITION(info[0].IsBuffer(), "Invalid argument");

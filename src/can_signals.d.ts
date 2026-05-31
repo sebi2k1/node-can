@@ -2,7 +2,7 @@ declare module "*can_signals.node" {
 	// Signal type constants passed as the 5th argument.
 	// Accepts a boolean for backward compatibility (false=unsigned, true=signed).
 	// 0 = unsigned, 1 = signed, 2 = float32 (single), 3 = float64 (double)
-	type SignalType = boolean | number;
+	type SignalType = boolean | 0 | 1 | 2 | 3;
 
 	// Decode signal according description
 	// arg[0] - Data array
