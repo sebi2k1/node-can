@@ -1,14 +1,12 @@
 Testing node-can
-========
+================
 
-For verfication please use nodeunit and the provided test cases.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full setup and test instructions.
 
-Pre-Requisites
------
-1. npm install
-2. sh prepare_test_env.sh # Create vcan-device for testing
+Quick reference:
 
-Usage
------
-
-Just execute: npm run test
+```sh
+sh prepare_test_env.sh   # one-time: creates vcan0 and vcan1
+npm test                 # run the full test suite
+npx mocha test/test-signal_conversion.js  # run a single file
+```

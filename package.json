@@ -7,6 +7,20 @@
   "description": "A SocketCAN abstraction layer for NodeJS.",
   "version": "4.2.0",
   "license": "MIT",
+  "keywords": [
+    "can",
+    "canbus",
+    "socketcan",
+    "linux",
+    "native",
+    "addon",
+    "iobroker",
+    "automotive"
+  ],
+  "homepage": "https://github.com/sebi2k1/node-can#readme",
+  "bugs": {
+    "url": "https://github.com/sebi2k1/node-can/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git://github.com/sebi2k1/node-can.git"
@@ -19,7 +33,8 @@
     "lint": "eslint --fix '*/**/*.{js,ts}'",
     "install": "node-gyp rebuild",
     "prepare": "npm run build:ts",
-    "test": "mocha"
+    "test": "mocha",
+    "coverage": "nyc npm test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",
@@ -42,6 +57,7 @@
     "xml2js": ">=0.6.2"
   },
   "main": "dist/socketcan.js",
+  "types": "dist/socketcan.d.ts",
   "files": [
     "binding.gyp",
     "dist",
