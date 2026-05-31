@@ -67,7 +67,16 @@ Keep pull requests focused. One logical change per PR is easier to review and me
 
 ## Code style
 
-TypeScript source is formatted with Prettier and linted with ESLint. Run `npm run lint` to auto-fix. Native C++ code (`native/`) follows the style of the surrounding code — no tabs, 4-space indent.
+**TypeScript:** Prettier + ESLint — run `npm run lint` to auto-fix. Use `===`, named constants over magic numbers.
+
+**C++ (`native/`):** C++20 (`-std=c++20`), 4-space indent, no tabs.
+- `enum class` over `typedef enum`; `static_cast<>` over C-style casts
+- `std::bit_cast<>` for type punning; `std::memcpy` when reading typed values from a `uint8_t` buffer (never cast the pointer)
+- ISO types (`uint32_t`) not POSIX aliases (`u_int32_t`); C++ headers (`<cstdint>`) not C ones (`<stdint.h>`)
+- Throw a `Napi::TypeError` on bad input — no silent fallbacks; check `env.IsExceptionPending()` after any helper that may throw
+- `[[nodiscard]]` on functions whose return value must not be ignored
+
+**Tests:** cover both endiannesses for byte-order-sensitive code; include round-trip (encode → decode) cases; test invalid arguments to verify error paths throw.
 
 ## Reporting bugs
 
