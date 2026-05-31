@@ -6,7 +6,8 @@
       "include_dirs": [
         "<!@(node -p \"require('node-addon-api').include_dir\")"
       ],
-      "defines": [ "NAPI_DISABLE_CPP_EXCEPTIONS" ]
+      "defines": [ "NAPI_DISABLE_CPP_EXCEPTIONS" ],
+      "cflags_cc": [ "-std=c++20" ]
     },
     {
       "target_name": "can_signals",
@@ -14,7 +15,8 @@
       "include_dirs": [
         "<!@(node -p \"require('node-addon-api').include_dir\")"
       ],
-      "defines": [ "NAPI_DISABLE_CPP_EXCEPTIONS" ]
+      "defines": [ "NAPI_DISABLE_CPP_EXCEPTIONS" ],
+      "cflags_cc": [ "-std=c++20" ]
     }
   ]
 }
