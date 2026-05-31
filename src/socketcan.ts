@@ -40,15 +40,35 @@ import * as _signals from "../build/Release/can_signals.node";
 
 import * as kcd from "./parse_kcd";
 
-// Maps KCD type string to the numeric SIGNAL_TYPE expected by the native addon.
-// 0=unsigned, 1=signed, 2=float32 (single), 3=float64 (double)
-function signalTypeCode(type: string): 0 | 1 | 2 | 3 {
-	if (type === "signed") return 1;
-	if (type === "single") return 2;
-	if (type === "double") return 3;
-	if (type !== "unsigned") console.warn(`socketcan: unknown signal type "${type}", treating as unsigned`);
-	return 0;
+/**
+ * Numeric signal-type codes understood by the can_signals native addon.
+ * Mirrors the SIGNAL_TYPE enum in native/signals.cc.
+ */
+export const SignalType = {
+	UNSIGNED: 0,
+	SIGNED:   1,
+	FLOAT32:  2,
+	FLOAT64:  3,
+} as const;
+type NativeSignalType = typeof SignalType[keyof typeof SignalType];
+
+/** Maps the KCD string type to the native numeric code. */
+function signalTypeCode(type: kcd.SignalType): NativeSignalType {
+	switch (type) {
+		case "unsigned": return SignalType.UNSIGNED;
+		case "signed":   return SignalType.SIGNED;
+		case "single":   return SignalType.FLOAT32;
+		case "double":   return SignalType.FLOAT64;
+	}
 }
+
+/** Returns true for IEEE-754 float/double signal types. */
+function isFloatSignal(type: kcd.SignalType): boolean {
+	return type === "single" || type === "double";
+}
+
+const UINT32_MAX = 0xffffffff;
+const TWO_TO_32  = 2 ** 32;
 
 /**
  * @method createRawChannel
@@ -396,7 +416,7 @@ export class DatabaseService {
 				msg.data,
 				s.bitOffset,
 				s.bitLength,
-				s.endianess == "little",
+				s.endianess === "little",
 				signalTypeCode(s.type)
 			);
 
@@ -471,31 +491,27 @@ export class DatabaseService {
 
 			const typeCode = signalTypeCode(s.type);
 
-			if (s.type === "single" || s.type === "double") {
+			if (isFloatSignal(s.type)) {
 				// Pass the floating-point value directly; the native addon handles
 				// the IEEE-754 bit reinterpretation and byte-order placement.
 				_signals.encodeSignal(
 					canmsg.data,
 					s.bitOffset,
 					s.bitLength,
-					s.endianess == "little",
+					s.endianess === "little",
 					typeCode,
 					val
 				);
 			} else {
 				// Integer path: round and split into two 32-bit words.
 				val = Math.round(val);
-				const word1 = val & 0xffffffff;
-				let word2 = 0;
-				// Bit-shift doesn't work above 32 bits; use division if needed.
-				if (val > 0xffffffff) {
-					word2 = val / Math.pow(2, 32);
-				}
+				const word1 = val & UINT32_MAX;
+				const word2 = val > UINT32_MAX ? val / TWO_TO_32 : 0;
 				_signals.encodeSignal(
 					canmsg.data,
 					s.bitOffset,
 					s.bitLength,
-					s.endianess == "little",
+					s.endianess === "little",
 					typeCode,
 					word1,
 					word2

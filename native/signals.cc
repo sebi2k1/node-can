@@ -46,10 +46,20 @@ static SIGNAL_TYPE _parse_signal_type(const Napi::Value& v)
 {
     if (v.IsBoolean())
         return v.As<Napi::Boolean>().Value() ? SIGNAL_TYPE_SIGNED : SIGNAL_TYPE_UNSIGNED;
-    u_int32_t n = v.As<Napi::Number>().Uint32Value();
+    uint32_t n = v.As<Napi::Number>().Uint32Value();
     if (n > SIGNAL_TYPE_FLOAT64)
         return SIGNAL_TYPE_UNSIGNED;   // safe fallback for unknown values
     return (SIGNAL_TYPE)n;
+}
+
+// Returns the fixed IEEE-754 bit width for float signal types; 0 for integer types.
+static uint32_t signal_type_bit_width(SIGNAL_TYPE t)
+{
+    switch (t) {
+        case SIGNAL_TYPE_FLOAT32: return 32;
+        case SIGNAL_TYPE_FLOAT64: return 64;
+        default:                  return 0;
+    }
 }
 
 //-----------------------------------------------------------------------------------------
@@ -117,9 +127,9 @@ static u_int64_t _getvalue(u_int8_t * data,
 Napi::Value DecodeSignal(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
-    u_int32_t offset, bitLength;
+    uint32_t offset, bitLength;
     ENDIANESS endianess;
-    u_int8_t data[64];           // CANFD buffer size (supports CAN FD)
+    uint8_t data[64];           // CANFD buffer size (supports CAN FD)
 
     CHECK_CONDITION(info.Length() == 5, "Too few arguments");
     CHECK_CONDITION(info[0].IsBuffer(), "Invalid argument");
@@ -135,11 +145,10 @@ Napi::Value DecodeSignal(const Napi::CallbackInfo& info)
     endianess  = info[3].As<Napi::Boolean>().Value() ? ENDIANESS_INTEL : ENDIANESS_MOTOROLA;
     SIGNAL_TYPE signalType = _parse_signal_type(info[4]);
 
-    // Float types have a fixed width; use that instead of the caller-supplied
-    // bitLength so a mismatch can never produce a silently wrong result.
-    u_int32_t effectiveBitLength = (signalType == SIGNAL_TYPE_FLOAT32) ? 32u
-                                 : (signalType == SIGNAL_TYPE_FLOAT64) ? 64u
-                                 : bitLength;
+    // Float types have a fixed width dictated by the type, not the caller.
+    // Using signal_type_bit_width() ensures encode and decode always agree.
+    uint32_t width = signal_type_bit_width(signalType);
+    uint32_t effectiveBitLength = (width > 0) ? width : bitLength;
 
     size_t maxBytes = std::min<size_t>(jsData.ByteLength(), sizeof(data));
 
@@ -153,7 +162,7 @@ Napi::Value DecodeSignal(const Napi::CallbackInfo& info)
         // Reinterpret the 32 raw bits as IEEE-754 single precision.
         // _getvalue already applied the correct byte order, so a plain
         // memcpy into a float gives the right value on any host endianness.
-        u_int32_t raw = (u_int32_t)val;
+        uint32_t raw = (uint32_t)val;
         float f;
         memcpy(&f, &raw, sizeof(f));
         retval = Napi::Number::New(env, (double)f);
@@ -165,14 +174,13 @@ Napi::Value DecodeSignal(const Napi::CallbackInfo& info)
         int32_t tmp = -1 * (~((UINT64_MAX << bitLength) | val) + 1);
         retval = Napi::Number::New(env, tmp);
     } else {
-        retval = Napi::Number::New(env, (u_int32_t)val);
+        retval = Napi::Number::New(env, (uint32_t)val);
     }
 
     Napi::Array raw_values = Napi::Array::New(env, 2);
     raw_values.Set(0u, retval);
-    // For float types the value fits in index 0; index 1 is always 0.
-    u_int32_t hi = (signalType == SIGNAL_TYPE_FLOAT32 || signalType == SIGNAL_TYPE_FLOAT64)
-                   ? 0u : (u_int32_t)(val >> 32);
+    // For float types the full value is in index 0; index 1 is always 0.
+    uint32_t hi = (width > 0) ? 0u : (uint32_t)(val >> 32);
     raw_values.Set(1u, Napi::Number::New(env, hi));
 
     return raw_values;
@@ -243,9 +251,9 @@ void _setvalue(u_int32_t offset, u_int32_t bitLength, ENDIANESS endianess, u_int
 Napi::Value EncodeSignal(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
-    u_int32_t offset, bitLength;
+    uint32_t offset, bitLength;
     ENDIANESS endianess;
-    u_int8_t data[64];           // CANFD buffer size (supports CAN FD)
+    uint8_t data[64];           // CANFD buffer size (supports CAN FD)
 
     CHECK_CONDITION(info.Length() >= 6, "Too few arguments");
     CHECK_CONDITION(info[0].IsBuffer(), "Invalid argument");
@@ -267,18 +275,18 @@ Napi::Value EncodeSignal(const Napi::CallbackInfo& info)
 
     if (signalType == SIGNAL_TYPE_FLOAT32) {
         float f = (float)info[5].As<Napi::Number>().DoubleValue();
-        u_int32_t raw;
+        uint32_t raw;
         memcpy(&raw, &f, sizeof(raw));
-        _setvalue(offset, 32, endianess, data, (u_int64_t)raw);
+        _setvalue(offset, signal_type_bit_width(SIGNAL_TYPE_FLOAT32), endianess, data, (uint64_t)raw);
     } else if (signalType == SIGNAL_TYPE_FLOAT64) {
         double d = info[5].As<Napi::Number>().DoubleValue();
-        u_int64_t raw;
+        uint64_t raw;
         memcpy(&raw, &d, sizeof(raw));
-        _setvalue(offset, 64, endianess, data, raw);
+        _setvalue(offset, signal_type_bit_width(SIGNAL_TYPE_FLOAT64), endianess, data, raw);
     } else {
-        u_int64_t raw_value = info[5].As<Napi::Number>().Uint32Value();
+        uint64_t raw_value = info[5].As<Napi::Number>().Uint32Value();
         if (info.Length() > 6 && (info[6].IsNumber() || info[6].IsBoolean())) {
-            raw_value += ((u_int64_t)info[6].As<Napi::Number>().Uint32Value()) << 32;
+            raw_value += ((uint64_t)info[6].As<Napi::Number>().Uint32Value()) << 32;
         }
         _setvalue(offset, bitLength, endianess, data, raw_value);
     }
