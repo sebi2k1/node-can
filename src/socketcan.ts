@@ -40,6 +40,15 @@ import * as _signals from "../build/Release/can_signals.node";
 
 import * as kcd from "./parse_kcd";
 
+// Maps KCD type string to the numeric SIGNAL_TYPE expected by the native addon.
+// 0=unsigned, 1=signed, 2=float32 (single), 3=float64 (double)
+function signalTypeCode(type: string): number {
+	if (type === "signed") return 1;
+	if (type === "single") return 2;
+	if (type === "double") return 3;
+	return 0;
+}
+
 /**
  * @method createRawChannel
  * @param channel {string} Channel name (e.g. vcan0)
@@ -387,7 +396,7 @@ export class DatabaseService {
 				s.bitOffset,
 				s.bitLength,
 				s.endianess == "little",
-				s.type == "signed"
+				signalTypeCode(s.type)
 			);
 
 			let val = ret[0] + (ret[1] << 32);
@@ -449,34 +458,48 @@ export class DatabaseService {
 
 			let val = s.value!;
 
-			// Apply factor/intercept and convert to Integer
+			// Apply scaling (slope/intercept).  For float/double signals these are
+			// typically 1/0 and the division/subtraction is a no-op, but we honour
+			// them if the KCD definition carries non-default values.
 			val -= s.intercept;
 			val /= s.slope;
-
-			// Make sure we are sending an integer because the division above could change it to a float.
-			val = Math.round(val);
 
 			if (m.len == 0) {
 				return;
 			}
 
-			const word1 = val & 0xffffffff;
-			let word2 = 0;
+			const typeCode = signalTypeCode(s.type);
 
-			// shift doesn't work above 32 bit, only do this if required to save cycles
-			if (val > 0xffffffff) {
-				word2 = val / Math.pow(2, 32);
+			if (s.type === "single" || s.type === "double") {
+				// Pass the floating-point value directly; the native addon handles
+				// the IEEE-754 bit reinterpretation and byte-order placement.
+				_signals.encodeSignal(
+					canmsg.data,
+					s.bitOffset,
+					s.bitLength,
+					s.endianess == "little",
+					typeCode,
+					val
+				);
+			} else {
+				// Integer path: round and split into two 32-bit words.
+				val = Math.round(val);
+				const word1 = val & 0xffffffff;
+				let word2 = 0;
+				// Bit-shift doesn't work above 32 bits; use division if needed.
+				if (val > 0xffffffff) {
+					word2 = val / Math.pow(2, 32);
+				}
+				_signals.encodeSignal(
+					canmsg.data,
+					s.bitOffset,
+					s.bitLength,
+					s.endianess == "little",
+					typeCode,
+					word1,
+					word2
+				);
 			}
-
-			_signals.encodeSignal(
-				canmsg.data,
-				s.bitOffset,
-				s.bitLength,
-				s.endianess == "little",
-				s.type == "signed",
-				word1,
-				word2
-			);
 		});
 
 		this.channel.send(canmsg);

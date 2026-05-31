@@ -34,6 +34,21 @@ typedef enum ENDIANESS
     ENDIANESS_INTEL
 } ENDIANESS;
 
+typedef enum SIGNAL_TYPE
+{
+    SIGNAL_TYPE_UNSIGNED = 0,
+    SIGNAL_TYPE_SIGNED   = 1,
+    SIGNAL_TYPE_FLOAT32  = 2,
+    SIGNAL_TYPE_FLOAT64  = 3
+} SIGNAL_TYPE;
+
+static SIGNAL_TYPE _parse_signal_type(const Napi::Value& v)
+{
+    if (v.IsBoolean())
+        return v.As<Napi::Boolean>().Value() ? SIGNAL_TYPE_SIGNED : SIGNAL_TYPE_UNSIGNED;
+    return (SIGNAL_TYPE)v.As<Napi::Number>().Uint32Value();
+}
+
 //-----------------------------------------------------------------------------------------
 // _signals.* methods
 
@@ -94,14 +109,13 @@ static u_int64_t _getvalue(u_int8_t * data,
 // arg[0] - Data array
 // arg[1] - offset zero indexed
 // arg[2] - bitLength one indexed
-// arg[3] - endianess
-// arg[4] - signed flag
+// arg[3] - endianess (bool: true=Intel/LE, false=Motorola/BE)
+// arg[4] - signal type: bool (false=unsigned, true=signed) or number (0=unsigned, 1=signed, 2=float32, 3=float64)
 Napi::Value DecodeSignal(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
     u_int32_t offset, bitLength;
     ENDIANESS endianess;
-    bool isSigned = false;
     u_int8_t data[64];           // CANFD size of bufer = 64
 
     CHECK_CONDITION(info.Length() == 5, "Too few arguments");
@@ -109,14 +123,14 @@ Napi::Value DecodeSignal(const Napi::CallbackInfo& info)
     CHECK_CONDITION(info[1].IsNumber(), "Invalid offset");
     CHECK_CONDITION(info[2].IsNumber(), "Invalid bit length");
     CHECK_CONDITION(info[3].IsBoolean(), "Invalid endianess");
-    CHECK_CONDITION(info[4].IsBoolean(), "Invalid signed flag");
+    CHECK_CONDITION(info[4].IsNumber() || info[4].IsBoolean(), "Invalid type");
 
     Napi::Buffer<uint8_t> jsData = info[0].As<Napi::Buffer<uint8_t>>();
 
-    offset    = info[1].As<Napi::Number>().Uint32Value();
-    bitLength = info[2].As<Napi::Number>().Uint32Value();
-    endianess = info[3].As<Napi::Boolean>().Value() ? ENDIANESS_INTEL : ENDIANESS_MOTOROLA;
-    isSigned  = info[4].As<Napi::Boolean>().Value();
+    offset     = info[1].As<Napi::Number>().Uint32Value();
+    bitLength  = info[2].As<Napi::Number>().Uint32Value();
+    endianess  = info[3].As<Napi::Boolean>().Value() ? ENDIANESS_INTEL : ENDIANESS_MOTOROLA;
+    SIGNAL_TYPE signalType = _parse_signal_type(info[4]);
 
     size_t maxBytes = std::min<size_t>(jsData.ByteLength(), sizeof(data));
 
@@ -126,7 +140,19 @@ Napi::Value DecodeSignal(const Napi::CallbackInfo& info)
     uint64_t val = _getvalue(data, offset, bitLength, endianess);
 
     Napi::Value retval;
-    if (isSigned && val & (1LLU << (bitLength - 1))) {
+    if (signalType == SIGNAL_TYPE_FLOAT32) {
+        // Reinterpret the 32 raw bits as IEEE-754 single precision.
+        // _getvalue already applied the correct byte order, so a plain
+        // memcpy into a float gives the right value on any host endianess.
+        u_int32_t raw = (u_int32_t)val;
+        float f;
+        memcpy(&f, &raw, sizeof(f));
+        retval = Napi::Number::New(env, (double)f);
+    } else if (signalType == SIGNAL_TYPE_FLOAT64) {
+        double d;
+        memcpy(&d, &val, sizeof(d));
+        retval = Napi::Number::New(env, d);
+    } else if (signalType == SIGNAL_TYPE_SIGNED && val & (1LLU << (bitLength - 1))) {
         int32_t tmp = -1 * (~((UINT64_MAX << bitLength) | val) + 1);
         retval = Napi::Number::New(env, tmp);
     } else {
@@ -135,7 +161,10 @@ Napi::Value DecodeSignal(const Napi::CallbackInfo& info)
 
     Napi::Array raw_values = Napi::Array::New(env, 2);
     raw_values.Set(0u, retval);
-    raw_values.Set(1u, Napi::Number::New(env, (u_int32_t)(val >> 32)));
+    // For float types the value fits in index 0; index 1 is always 0.
+    u_int32_t hi = (signalType == SIGNAL_TYPE_FLOAT32 || signalType == SIGNAL_TYPE_FLOAT64)
+                   ? 0u : (u_int32_t)(val >> 32);
+    raw_values.Set(1u, Napi::Number::New(env, hi));
 
     return raw_values;
 }
@@ -198,42 +227,52 @@ void _setvalue(u_int32_t offset, u_int32_t bitLength, ENDIANESS endianess, u_int
 // arg[0] - Data array
 // arg[1] - bitOffset
 // arg[2] - bitLength
-// arg[3] - endianess
-// arg[4] - sign flag
-// arg[5] - first 4 bytes value to encode
-// arg[6] - second 4 bytes value to encode
+// arg[3] - endianess (bool: true=Intel/LE, false=Motorola/BE)
+// arg[4] - signal type: bool (false=unsigned, true=signed) or number (0=unsigned, 1=signed, 2=float32, 3=float64)
+// arg[5] - value to encode (integer lo-word for int types; float/double JS number for float types)
+// arg[6] - (integer types only) high 32 bits for 64-bit integers
 Napi::Value EncodeSignal(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
     u_int32_t offset, bitLength;
     ENDIANESS endianess;
     u_int8_t data[64];           // CANFD size of bufer = 64
-    u_int64_t raw_value;
 
     CHECK_CONDITION(info.Length() >= 6, "Too few arguments");
     CHECK_CONDITION(info[0].IsBuffer(), "Invalid argument");
     CHECK_CONDITION(info[1].IsNumber(), "Invalid offset");
     CHECK_CONDITION(info[2].IsNumber(), "Invalid bit length");
     CHECK_CONDITION(info[3].IsBoolean(), "Invalid endianess");
-    CHECK_CONDITION(info[4].IsBoolean(), "Invalid sign flag");
+    CHECK_CONDITION(info[4].IsNumber() || info[4].IsBoolean(), "Invalid type");
     CHECK_CONDITION(info[5].IsNumber() || info[5].IsBoolean(), "Invalid value");
 
     Napi::Buffer<uint8_t> jsData = info[0].As<Napi::Buffer<uint8_t>>();
 
-    offset    = info[1].As<Napi::Number>().Uint32Value();
-    bitLength = info[2].As<Napi::Number>().Uint32Value();
-    endianess = info[3].As<Napi::Boolean>().Value() ? ENDIANESS_INTEL : ENDIANESS_MOTOROLA;
-
-    raw_value = info[5].As<Napi::Number>().Uint32Value();
-    if (info.Length() > 6 && (info[6].IsNumber() || info[6].IsBoolean())) {
-        raw_value += ((u_int64_t)info[6].As<Napi::Number>().Uint32Value()) << 32;
-    }
+    offset     = info[1].As<Napi::Number>().Uint32Value();
+    bitLength  = info[2].As<Napi::Number>().Uint32Value();
+    endianess  = info[3].As<Napi::Boolean>().Value() ? ENDIANESS_INTEL : ENDIANESS_MOTOROLA;
+    SIGNAL_TYPE signalType = _parse_signal_type(info[4]);
 
     size_t maxBytes = std::min<size_t>(jsData.ByteLength(), sizeof(data));
-
     memcpy(data, jsData.Data(), maxBytes);
 
-    _setvalue(offset, bitLength, endianess, data, raw_value);
+    if (signalType == SIGNAL_TYPE_FLOAT32) {
+        float f = (float)info[5].As<Napi::Number>().DoubleValue();
+        u_int32_t raw;
+        memcpy(&raw, &f, sizeof(raw));
+        _setvalue(offset, 32, endianess, data, (u_int64_t)raw);
+    } else if (signalType == SIGNAL_TYPE_FLOAT64) {
+        double d = info[5].As<Napi::Number>().DoubleValue();
+        u_int64_t raw;
+        memcpy(&raw, &d, sizeof(raw));
+        _setvalue(offset, 64, endianess, data, raw);
+    } else {
+        u_int64_t raw_value = info[5].As<Napi::Number>().Uint32Value();
+        if (info.Length() > 6 && (info[6].IsNumber() || info[6].IsBoolean())) {
+            raw_value += ((u_int64_t)info[6].As<Napi::Number>().Uint32Value()) << 32;
+        }
+        _setvalue(offset, bitLength, endianess, data, raw_value);
+    }
 
     memcpy(jsData.Data(), data, maxBytes);
 
