@@ -13,14 +13,12 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#define __STDC_LIMIT_MACROS
-
 #include <napi.h>
 
 #include <algorithm>
-
-#include <stdint.h>
-#include <string.h>
+#include <bit>
+#include <cstdint>
+#include <cstring>
 
 #define CHECK_CONDITION(expr, str) \
   if (!(expr)) { \
@@ -28,77 +26,64 @@
     return env.Undefined(); \
   }
 
-typedef enum ENDIANESS
+enum class ENDIANESS
 {
-    ENDIANESS_MOTOROLA = 0,
-    ENDIANESS_INTEL
-} ENDIANESS;
+    MOTOROLA = 0,
+    INTEL
+};
 
-typedef enum SIGNAL_TYPE
+enum class SIGNAL_TYPE
 {
-    SIGNAL_TYPE_UNSIGNED = 0,
-    SIGNAL_TYPE_SIGNED   = 1,
-    SIGNAL_TYPE_FLOAT32  = 2,
-    SIGNAL_TYPE_FLOAT64  = 3
-} SIGNAL_TYPE;
+    UNSIGNED = 0,
+    SIGNED   = 1,
+    FLOAT32  = 2,
+    FLOAT64  = 3
+};
 
-static SIGNAL_TYPE _parse_signal_type(const Napi::Value& v)
+static SIGNAL_TYPE _parse_signal_type(Napi::Env env, const Napi::Value& v)
 {
     if (v.IsBoolean())
-        return v.As<Napi::Boolean>().Value() ? SIGNAL_TYPE_SIGNED : SIGNAL_TYPE_UNSIGNED;
+        return v.As<Napi::Boolean>().Value() ? SIGNAL_TYPE::SIGNED : SIGNAL_TYPE::UNSIGNED;
     uint32_t n = v.As<Napi::Number>().Uint32Value();
-    if (n > SIGNAL_TYPE_FLOAT64)
-        return SIGNAL_TYPE_UNSIGNED;   // safe fallback for unknown values
-    return (SIGNAL_TYPE)n;
+    if (n > static_cast<uint32_t>(SIGNAL_TYPE::FLOAT64)) {
+        Napi::TypeError::New(env, "Unknown signal type").ThrowAsJavaScriptException();
+        return SIGNAL_TYPE::UNSIGNED;
+    }
+    return static_cast<SIGNAL_TYPE>(n);
 }
 
 // Returns the fixed IEEE-754 bit width for float signal types; 0 for integer types.
 static uint32_t signal_type_bit_width(SIGNAL_TYPE t)
 {
     switch (t) {
-        case SIGNAL_TYPE_FLOAT32: return 32;
-        case SIGNAL_TYPE_FLOAT64: return 64;
-        default:                  return 0;
+        case SIGNAL_TYPE::FLOAT32: return 32;
+        case SIGNAL_TYPE::FLOAT64: return 64;
+        default:                   return 0;
     }
 }
 
 //-----------------------------------------------------------------------------------------
 // _signals.* methods
 
-static u_int64_t _getvalue(u_int8_t * data,
-                           u_int32_t offset,
-                           u_int32_t length,
-                           ENDIANESS byteOrder)
+[[nodiscard]] static uint64_t _getvalue(const uint8_t* data,
+                                        uint32_t offset,
+                                        uint32_t length,
+                                        ENDIANESS byteOrder)
 {
-    uint64_t d;
-    uint64_t o = 0;
+    uint64_t d_raw;
+    std::memcpy(&d_raw, data, sizeof(d_raw));
+    uint64_t d = (byteOrder == ENDIANESS::INTEL) ? le64toh(d_raw) : be64toh(d_raw);
 
-    if (byteOrder == ENDIANESS_INTEL) {
-        d = le64toh(*((uint64_t *)&data[0]));
-    } else {
-        d = be64toh(*((uint64_t *)&data[0]));
-    }
+    uint64_t m = (length == 64) ? UINT64_MAX : (UINT64_C(1) << length) - 1;
+    size_t shift = (byteOrder == ENDIANESS::INTEL) ? offset : (64 - offset - length);
 
-    uint64_t m;
-    if (length == 64) {
-      m = (uint64_t) UINT64_MAX;
-    } else {
-      m = (1LLU << length) - 1;
-    }
-    size_t shift;
-    if (byteOrder == ENDIANESS_INTEL) {
-        shift = offset;
-    } else {
-        shift = 64 - offset - length;
-    }
-
-    o = (d >> shift) & m;
+    uint64_t o = (d >> shift) & m;
 
 #ifdef KAYAK_DATA_CHECK
     size_t i;
     int bitNr;
     uint64_t val = 0;
-    if (byteOrder == ENDIANESS_INTEL) {
+    if (byteOrder == ENDIANESS::INTEL) {
         for (i = 0; i < length; i++) {
             bitNr = i + offset;
             val |= ((data[bitNr >> 3] >> (bitNr & 0x07)) & 1) << i;
@@ -142,8 +127,9 @@ Napi::Value DecodeSignal(const Napi::CallbackInfo& info)
 
     offset     = info[1].As<Napi::Number>().Uint32Value();
     bitLength  = info[2].As<Napi::Number>().Uint32Value();
-    endianess  = info[3].As<Napi::Boolean>().Value() ? ENDIANESS_INTEL : ENDIANESS_MOTOROLA;
-    SIGNAL_TYPE signalType = _parse_signal_type(info[4]);
+    endianess  = info[3].As<Napi::Boolean>().Value() ? ENDIANESS::INTEL : ENDIANESS::MOTOROLA;
+    SIGNAL_TYPE signalType = _parse_signal_type(env, info[4]);
+    if (env.IsExceptionPending()) return env.Undefined();
 
     // Float types have a fixed width dictated by the type, not the caller.
     // Using signal_type_bit_width() ensures encode and decode always agree.
@@ -152,78 +138,60 @@ Napi::Value DecodeSignal(const Napi::CallbackInfo& info)
 
     size_t maxBytes = std::min<size_t>(jsData.ByteLength(), sizeof(data));
 
-    memset(data, 0, sizeof(data));
-    memcpy(data, jsData.Data(), maxBytes);
+    std::memset(data, 0, sizeof(data));
+    std::memcpy(data, jsData.Data(), maxBytes);
 
     uint64_t val = _getvalue(data, offset, effectiveBitLength, endianess);
 
     Napi::Value retval;
-    if (signalType == SIGNAL_TYPE_FLOAT32) {
+    if (signalType == SIGNAL_TYPE::FLOAT32) {
         // Reinterpret the 32 raw bits as IEEE-754 single precision.
-        // _getvalue already applied the correct byte order, so a plain
-        // memcpy into a float gives the right value on any host endianness.
-        uint32_t raw = (uint32_t)val;
-        float f;
-        memcpy(&f, &raw, sizeof(f));
-        retval = Napi::Number::New(env, (double)f);
-    } else if (signalType == SIGNAL_TYPE_FLOAT64) {
-        double d;
-        memcpy(&d, &val, sizeof(d));
-        retval = Napi::Number::New(env, d);
-    } else if (signalType == SIGNAL_TYPE_SIGNED && val & (1LLU << (bitLength - 1))) {
-        int32_t tmp = -1 * (~((UINT64_MAX << bitLength) | val) + 1);
-        retval = Napi::Number::New(env, tmp);
+        // _getvalue already applied the correct byte order, so std::bit_cast
+        // gives the right value on any host endianness.
+        retval = Napi::Number::New(env,
+            static_cast<double>(std::bit_cast<float>(static_cast<uint32_t>(val))));
+    } else if (signalType == SIGNAL_TYPE::FLOAT64) {
+        retval = Napi::Number::New(env, std::bit_cast<double>(val));
+    } else if (signalType == SIGNAL_TYPE::SIGNED && (val & (UINT64_C(1) << (bitLength - 1)))) {
+        // Sign-extend from bitLength bits to int64_t.
+        // XOR-subtract avoids UB that a naive left-shift approach would have.
+        uint64_t sign_mask = UINT64_C(1) << (bitLength - 1);
+        int64_t tmp = static_cast<int64_t>((val ^ sign_mask) - sign_mask);
+        retval = Napi::Number::New(env, static_cast<double>(tmp));
     } else {
-        retval = Napi::Number::New(env, (uint32_t)val);
+        retval = Napi::Number::New(env, static_cast<uint32_t>(val));
     }
 
     Napi::Array raw_values = Napi::Array::New(env, 2);
     raw_values.Set(0u, retval);
     // For float types the full value is in index 0; index 1 is always 0.
-    uint32_t hi = (width > 0) ? 0u : (uint32_t)(val >> 32);
+    uint32_t hi = (width > 0) ? 0u : static_cast<uint32_t>(val >> 32);
     raw_values.Set(1u, Napi::Number::New(env, hi));
 
     return raw_values;
 }
 
-void _setvalue(u_int32_t offset, u_int32_t bitLength, ENDIANESS endianess, u_int8_t data[8], u_int64_t raw_value)
+static void _setvalue(uint32_t offset, uint32_t bitLength, ENDIANESS endianess,
+                      uint8_t* data, uint64_t raw_value)
 {
-    uint64_t o;
-    if (endianess == ENDIANESS_INTEL) {
-        o = le64toh(*((uint64_t *)&data[0]));
-    } else {
-        o = be64toh(*((uint64_t *)&data[0]));
-    }
+    uint64_t o_raw;
+    std::memcpy(&o_raw, data, sizeof(o_raw));
+    uint64_t o = (endianess == ENDIANESS::INTEL) ? le64toh(o_raw) : be64toh(o_raw);
 
-    uint64_t m = 0;
-    if (bitLength == 64) {
-      m = (uint64_t) UINT64_MAX;
-    } else {
-      m = (1LLU << bitLength) - 1;
-    }
-    size_t shift;
-    if (endianess == ENDIANESS_INTEL) {
-        shift = offset;
-    } else {
-        shift = 64 - offset - bitLength;
-    }
+    uint64_t m = (bitLength == 64) ? UINT64_MAX : (UINT64_C(1) << bitLength) - 1;
+    size_t shift = (endianess == ENDIANESS::INTEL) ? offset : (64 - offset - bitLength);
 
-    o &= (uint64_t) ~(m << shift);
-    o |= (uint64_t) (raw_value & m) << shift;
+    o &= ~(m << shift);
+    o |= (raw_value & m) << shift;
 
-    if (endianess == ENDIANESS_INTEL) {
-        o = htole64(o);
-    } else {
-        o = htobe64(o);
-    }
-
-    memcpy(&data[0], &o, 8);
+    o = (endianess == ENDIANESS::INTEL) ? htole64(o) : htobe64(o);
+    std::memcpy(data, &o, sizeof(o));
 
 #ifdef KAYAK_DATA_CHECK
     size_t i;
     int bitNr;
     uint64_t val = 0;
-    if (endianess == ENDIANESS_INTEL) {
+    if (endianess == ENDIANESS::INTEL) {
         for (i = 0; i < bitLength; i++) {
             bitNr = i + offset;
             val |= ((data[bitNr >> 3] >> (bitNr & 0x07)) & 1) << i;
@@ -267,31 +235,30 @@ Napi::Value EncodeSignal(const Napi::CallbackInfo& info)
 
     offset     = info[1].As<Napi::Number>().Uint32Value();
     bitLength  = info[2].As<Napi::Number>().Uint32Value();
-    endianess  = info[3].As<Napi::Boolean>().Value() ? ENDIANESS_INTEL : ENDIANESS_MOTOROLA;
-    SIGNAL_TYPE signalType = _parse_signal_type(info[4]);
+    endianess  = info[3].As<Napi::Boolean>().Value() ? ENDIANESS::INTEL : ENDIANESS::MOTOROLA;
+    SIGNAL_TYPE signalType = _parse_signal_type(env, info[4]);
+    if (env.IsExceptionPending()) return env.Undefined();
 
     size_t maxBytes = std::min<size_t>(jsData.ByteLength(), sizeof(data));
-    memcpy(data, jsData.Data(), maxBytes);
+    std::memcpy(data, jsData.Data(), maxBytes);
 
-    if (signalType == SIGNAL_TYPE_FLOAT32) {
-        float f = (float)info[5].As<Napi::Number>().DoubleValue();
-        uint32_t raw;
-        memcpy(&raw, &f, sizeof(raw));
-        _setvalue(offset, signal_type_bit_width(SIGNAL_TYPE_FLOAT32), endianess, data, (uint64_t)raw);
-    } else if (signalType == SIGNAL_TYPE_FLOAT64) {
+    if (signalType == SIGNAL_TYPE::FLOAT32) {
+        float f = static_cast<float>(info[5].As<Napi::Number>().DoubleValue());
+        _setvalue(offset, signal_type_bit_width(SIGNAL_TYPE::FLOAT32), endianess, data,
+                  static_cast<uint64_t>(std::bit_cast<uint32_t>(f)));
+    } else if (signalType == SIGNAL_TYPE::FLOAT64) {
         double d = info[5].As<Napi::Number>().DoubleValue();
-        uint64_t raw;
-        memcpy(&raw, &d, sizeof(raw));
-        _setvalue(offset, signal_type_bit_width(SIGNAL_TYPE_FLOAT64), endianess, data, raw);
+        _setvalue(offset, signal_type_bit_width(SIGNAL_TYPE::FLOAT64), endianess, data,
+                  std::bit_cast<uint64_t>(d));
     } else {
-        uint64_t raw_value = info[5].As<Napi::Number>().Uint32Value();
+        uint64_t raw_value = static_cast<uint64_t>(info[5].As<Napi::Number>().Uint32Value());
         if (info.Length() > 6 && (info[6].IsNumber() || info[6].IsBoolean())) {
-            raw_value += ((uint64_t)info[6].As<Napi::Number>().Uint32Value()) << 32;
+            raw_value += static_cast<uint64_t>(info[6].As<Napi::Number>().Uint32Value()) << 32;
         }
         _setvalue(offset, bitLength, endianess, data, raw_value);
     }
 
-    memcpy(jsData.Data(), data, maxBytes);
+    std::memcpy(jsData.Data(), data, maxBytes);
 
     return env.Undefined();
 }
