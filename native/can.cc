@@ -97,7 +97,8 @@ public:
     : Napi::ObjectWrap<RawChannel>(info),
       m_Thread(0), m_Name(""), m_ReadPending(false), m_SocketFd(-1),
       m_ThreadStopRequested(false), m_TimestampsSupported(false),
-      m_NonBlockingSend(false), m_napi_env(nullptr), m_async_ctx(nullptr)
+      m_NonBlockingSend(false), m_napi_env(nullptr), m_async_ctx(nullptr),
+      m_StoppedAlready(false), m_SyncInitialized(false)
   {
     Napi::Env env = info.Env();
 
@@ -164,6 +165,7 @@ public:
 
       pthread_mutex_init(&m_ReadPendingMtx, NULL);
       pthread_cond_init(&m_ReadPendingCond, NULL);
+      m_SyncInitialized = true;
 
       return;
 
@@ -179,6 +181,21 @@ public:
 
   ~RawChannel()
   {
+    // Stop the reader thread before closing the socket: the thread may be
+    // mid-poll() on m_SocketFd, and closing a fd while another thread is
+    // polling it is undefined under POSIX (the fd can be reused by an
+    // unrelated open() before poll() returns).
+    if (m_Thread)
+      stopThread();
+
+    if (m_SocketFd >= 0)
+      close(m_SocketFd);
+
+    if (m_SyncInitialized) {
+      pthread_cond_destroy(&m_ReadPendingCond);
+      pthread_mutex_destroy(&m_ReadPendingMtx);
+    }
+
     for (size_t i = 0; i < m_OnMessageListeners.size(); i++)
       delete m_OnMessageListeners.at(i);
     m_OnMessageListeners.clear();
@@ -186,12 +203,6 @@ public:
     for (size_t i = 0; i < m_OnChannelStoppedListeners.size(); i++)
       delete m_OnChannelStoppedListeners.at(i);
     m_OnChannelStoppedListeners.clear();
-
-    if (m_SocketFd >= 0)
-      close(m_SocketFd);
-
-    if (m_Thread)
-      stopThread();
   }
 
 private:
@@ -256,9 +267,9 @@ private:
     napi_async_init(env, (napi_value)info.This(), resource_name, &m_async_ctx);
 
     m_ThreadStopRequested = false;
-    pthread_create(&m_Thread, NULL, c_thread_entry, this);
+    int rc = pthread_create(&m_Thread, NULL, c_thread_entry, this);
 
-    CHECK_CONDITION(m_Thread, "Error starting dispatch thread");
+    CHECK_CONDITION(rc == 0, "Error starting dispatch thread");
 
     Ref();
 
@@ -510,6 +521,15 @@ private:
   napi_env m_napi_env;
   napi_async_context m_async_ctx;
 
+  // Single-shot guard so that JS Stop() and a reader-thread POLLHUP-driven
+  // uv_async_send can both call async_channel_stopped() without us running
+  // the listener loop or Unref() twice.
+  bool m_StoppedAlready;
+
+  // Whether m_ReadPendingMtx / m_ReadPendingCond were successfully
+  // initialized. Controls whether the destructor pairs them with *_destroy.
+  bool m_SyncInitialized;
+
   static void * c_thread_entry(void *_this) { assert(_this); reinterpret_cast<RawChannel *>(_this)->ThreadEntry(); return NULL; }
 
   void ThreadEntry()
@@ -588,6 +608,13 @@ private:
 
   void async_channel_stopped()
   {
+    // Single-shot: JS Stop() and the reader-thread POLLHUP/POLLERR path can
+    // both end up calling this. Without the guard the second invocation
+    // would re-run the listener loop, double-close the uv handles, and
+    // Unref() the strong reference one too many times.
+    if (m_StoppedAlready) return;
+    m_StoppedAlready = true;
+
     Napi::Env env(m_napi_env);
     Napi::HandleScope scope(env);
 
