@@ -15,6 +15,8 @@
  */
 #include <napi.h>
 
+#include <endian.h>   // le64toh/be64toh/htole64/htobe64 (not pulled in transitively on all arches)
+
 #include <algorithm>
 #include <bit>
 #include <cstdint>
