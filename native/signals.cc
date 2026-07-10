@@ -42,6 +42,15 @@ enum class SIGNAL_TYPE
     FLOAT64  = 3
 };
 
+// Max CAN-FD payload. The local scratch buffer is padded so that the 8-byte
+// windowed memcpy used by _getvalue / _setvalue always has 8 bytes available,
+// even for a signal sitting in the final bytes of the payload. The padding
+// stays zero and any garbage bits inside the window are masked off before use.
+constexpr size_t   MAX_PAYLOAD_BYTES = 64;
+constexpr size_t   WINDOW_SAFETY_PAD = 8;
+constexpr size_t   LOCAL_BUFFER_SIZE = MAX_PAYLOAD_BYTES + WINDOW_SAFETY_PAD;
+constexpr uint32_t MAX_TOTAL_BITS    = MAX_PAYLOAD_BYTES * 8;
+
 static SIGNAL_TYPE _parse_signal_type(Napi::Env env, const Napi::Value& v)
 {
     if (v.IsBoolean())
@@ -67,42 +76,49 @@ static uint32_t signal_type_bit_width(SIGNAL_TYPE t)
 //-----------------------------------------------------------------------------------------
 // _signals.* methods
 
+// Extract a 1..64-bit signal value from a CAN/CAN-FD payload.
+//
+// Fast path: when the signal's bits all fit inside the 8-byte window starting
+// at data[offset/8], one memcpy + endian swap + shift + mask suffices. This
+// covers every signal with length <= 57 and every byte-aligned signal up to 64
+// bits — i.e. essentially everything seen in real CAN databases. The
+// LOCAL_BUFFER_SIZE padding guarantees the 8-byte read is always in-bounds.
+//
+// Fallback: a 58..64 bit signal at a non-byte-aligned offset would straddle
+// more than 8 bytes worth of bit positions; in that rare case we walk it
+// bit by bit.
 [[nodiscard]] static uint64_t _getvalue(const uint8_t* data,
                                         uint32_t offset,
                                         uint32_t length,
                                         ENDIANESS byteOrder)
 {
-    uint64_t d_raw;
-    std::memcpy(&d_raw, data, sizeof(d_raw));
-    uint64_t d = (byteOrder == ENDIANESS::INTEL) ? le64toh(d_raw) : be64toh(d_raw);
+    const uint32_t bit_in_byte = offset % 8;
+    const size_t   byte_start  = offset / 8;
+    const uint64_t mask        = (length == 64) ? UINT64_MAX
+                                                : ((UINT64_C(1) << length) - 1);
 
-    uint64_t m = (length == 64) ? UINT64_MAX : (UINT64_C(1) << length) - 1;
-    size_t shift = (byteOrder == ENDIANESS::INTEL) ? offset : (64 - offset - length);
+    if (bit_in_byte + length <= 64) {
+        uint64_t d_raw;
+        std::memcpy(&d_raw, &data[byte_start], sizeof(d_raw));
+        if (byteOrder == ENDIANESS::INTEL) {
+            return (le64toh(d_raw) >> bit_in_byte) & mask;
+        }
+        return (be64toh(d_raw) >> (64 - bit_in_byte - length)) & mask;
+    }
 
-    uint64_t o = (d >> shift) & m;
-
-#ifdef KAYAK_DATA_CHECK
-    size_t i;
-    int bitNr;
     uint64_t val = 0;
     if (byteOrder == ENDIANESS::INTEL) {
-        for (i = 0; i < length; i++) {
-            bitNr = i + offset;
-            val |= ((data[bitNr >> 3] >> (bitNr & 0x07)) & 1) << i;
+        for (uint32_t i = 0; i < length; i++) {
+            uint32_t bit = offset + i;
+            val |= static_cast<uint64_t>((data[bit >> 3] >> (bit & 7)) & 1) << i;
         }
     } else {
-        for (i = 0; i < length; i++) {
-            bitNr = offset + length - i -1;
-            val |= ((data[bitNr >> 3] >> (7-(bitNr & 0x07))) & 1) << i;
+        for (uint32_t i = 0; i < length; i++) {
+            uint32_t bit = offset + length - i - 1;
+            val |= static_cast<uint64_t>((data[bit >> 3] >> (7 - (bit & 7))) & 1) << i;
         }
     }
-
-    if (val != o) {
-        fprintf(stderr, "getvalue: got %lu, expected %lu\n", val, o);
-    }
-#endif
-
-    return o;
+    return val;
 }
 
 // Decode signal according description
@@ -116,7 +132,7 @@ Napi::Value DecodeSignal(const Napi::CallbackInfo& info)
     Napi::Env env = info.Env();
     uint32_t offset, bitLength;
     ENDIANESS endianess;
-    uint8_t data[64];           // CANFD buffer size (supports CAN FD)
+    uint8_t data[LOCAL_BUFFER_SIZE];
 
     CHECK_CONDITION(info.Length() == 5, "Too few arguments");
     CHECK_CONDITION(info[0].IsBuffer(), "Invalid argument");
@@ -138,7 +154,14 @@ Napi::Value DecodeSignal(const Napi::CallbackInfo& info)
     uint32_t width = signal_type_bit_width(signalType);
     uint32_t effectiveBitLength = (width > 0) ? width : bitLength;
 
-    size_t maxBytes = std::min<size_t>(jsData.ByteLength(), sizeof(data));
+    CHECK_CONDITION(effectiveBitLength > 0 && effectiveBitLength <= 64,
+                    "bitLength must be in range 1..64");
+    CHECK_CONDITION(offset + effectiveBitLength <= MAX_TOTAL_BITS,
+                    "signal extends past 64-byte frame");
+
+    size_t maxBytes = std::min<size_t>(jsData.ByteLength(), MAX_PAYLOAD_BYTES);
+    CHECK_CONDITION((offset + effectiveBitLength + 7) / 8 <= maxBytes,
+                    "signal extends past buffer");
 
     std::memset(data, 0, sizeof(data));
     std::memcpy(data, jsData.Data(), maxBytes);
@@ -173,41 +196,55 @@ Napi::Value DecodeSignal(const Napi::CallbackInfo& info)
     return raw_values;
 }
 
+// Write a 1..64-bit signal value into a CAN/CAN-FD payload.
+//
+// Same fast-path / fallback split as _getvalue. The fast path is a read-
+// modify-write of the 8-byte window starting at data[offset/8]; non-signal
+// bits inside the window are preserved by the RMW.
 static void _setvalue(uint32_t offset, uint32_t bitLength, ENDIANESS endianess,
                       uint8_t* data, uint64_t raw_value)
 {
-    uint64_t o_raw;
-    std::memcpy(&o_raw, data, sizeof(o_raw));
-    uint64_t o = (endianess == ENDIANESS::INTEL) ? le64toh(o_raw) : be64toh(o_raw);
+    const uint32_t bit_in_byte = offset % 8;
+    const size_t   byte_start  = offset / 8;
+    const uint64_t mask        = (bitLength == 64) ? UINT64_MAX
+                                                   : ((UINT64_C(1) << bitLength) - 1);
 
-    uint64_t m = (bitLength == 64) ? UINT64_MAX : (UINT64_C(1) << bitLength) - 1;
-    size_t shift = (endianess == ENDIANESS::INTEL) ? offset : (64 - offset - bitLength);
+    if (bit_in_byte + bitLength <= 64) {
+        uint64_t o_raw;
+        std::memcpy(&o_raw, &data[byte_start], sizeof(o_raw));
 
-    o &= ~(m << shift);
-    o |= (raw_value & m) << shift;
+        if (endianess == ENDIANESS::INTEL) {
+            uint64_t o = le64toh(o_raw);
+            o &= ~(mask << bit_in_byte);
+            o |= (raw_value & mask) << bit_in_byte;
+            o_raw = htole64(o);
+        } else {
+            uint64_t o = be64toh(o_raw);
+            const uint32_t shift = 64 - bit_in_byte - bitLength;
+            o &= ~(mask << shift);
+            o |= (raw_value & mask) << shift;
+            o_raw = htobe64(o);
+        }
 
-    o = (endianess == ENDIANESS::INTEL) ? htole64(o) : htobe64(o);
-    std::memcpy(data, &o, sizeof(o));
+        std::memcpy(&data[byte_start], &o_raw, sizeof(o_raw));
+        return;
+    }
 
-#ifdef KAYAK_DATA_CHECK
-    size_t i;
-    int bitNr;
-    uint64_t val = 0;
     if (endianess == ENDIANESS::INTEL) {
-        for (i = 0; i < bitLength; i++) {
-            bitNr = i + offset;
-            val |= ((data[bitNr >> 3] >> (bitNr & 0x07)) & 1) << i;
+        for (uint32_t i = 0; i < bitLength; i++) {
+            uint32_t bit       = offset + i;
+            uint32_t b_in_byte = bit & 7;
+            uint8_t  v         = (raw_value >> i) & 1;
+            data[bit >> 3] = (data[bit >> 3] & ~(1u << b_in_byte)) | (v << b_in_byte);
         }
     } else {
-        for (i = 0; i < bitLength; i++) {
-            bitNr = offset + bitLength - i -1;
-            val |= ((data[bitNr >> 3] >> (7-(bitNr & 0x07))) & 1) << i;
+        for (uint32_t i = 0; i < bitLength; i++) {
+            uint32_t bit       = offset + bitLength - i - 1;
+            uint32_t b_in_byte = 7 - (bit & 7);
+            uint8_t  v         = (raw_value >> i) & 1;
+            data[bit >> 3] = (data[bit >> 3] & ~(1u << b_in_byte)) | (v << b_in_byte);
         }
     }
-    if(val != ( raw_value & m)) {
-        fprintf(stderr, "setvalue: got %lu, expected %lu\n", val, raw_value & m);
-    }
-#endif
 }
 
 // Encode signal according description
@@ -223,7 +260,7 @@ Napi::Value EncodeSignal(const Napi::CallbackInfo& info)
     Napi::Env env = info.Env();
     uint32_t offset, bitLength;
     ENDIANESS endianess;
-    uint8_t data[64];           // CANFD buffer size (supports CAN FD)
+    uint8_t data[LOCAL_BUFFER_SIZE];
 
     CHECK_CONDITION(info.Length() >= 6, "Too few arguments");
     CHECK_CONDITION(info[0].IsBuffer(), "Invalid argument");
@@ -241,23 +278,38 @@ Napi::Value EncodeSignal(const Napi::CallbackInfo& info)
     SIGNAL_TYPE signalType = _parse_signal_type(env, info[4]);
     if (env.IsExceptionPending()) return env.Undefined();
 
-    size_t maxBytes = std::min<size_t>(jsData.ByteLength(), sizeof(data));
+    uint32_t width = signal_type_bit_width(signalType);
+    uint32_t effectiveBitLength = (width > 0) ? width : bitLength;
+
+    CHECK_CONDITION(effectiveBitLength > 0 && effectiveBitLength <= 64,
+                    "bitLength must be in range 1..64");
+    CHECK_CONDITION(offset + effectiveBitLength <= MAX_TOTAL_BITS,
+                    "signal extends past 64-byte frame");
+
+    size_t maxBytes = std::min<size_t>(jsData.ByteLength(), MAX_PAYLOAD_BYTES);
+    CHECK_CONDITION((offset + effectiveBitLength + 7) / 8 <= maxBytes,
+                    "signal extends past buffer");
+
+    // memset before memcpy: _setvalue's fast-path RMW may touch bytes past
+    // maxBytes inside the local buffer, and we don't want to OR-in stack
+    // garbage. (The trailing bytes are discarded by the memcpy-back below.)
+    std::memset(data, 0, sizeof(data));
     std::memcpy(data, jsData.Data(), maxBytes);
 
     if (signalType == SIGNAL_TYPE::FLOAT32) {
         float f = static_cast<float>(info[5].As<Napi::Number>().DoubleValue());
-        _setvalue(offset, signal_type_bit_width(SIGNAL_TYPE::FLOAT32), endianess, data,
+        _setvalue(offset, effectiveBitLength, endianess, data,
                   static_cast<uint64_t>(std::bit_cast<uint32_t>(f)));
     } else if (signalType == SIGNAL_TYPE::FLOAT64) {
         double d = info[5].As<Napi::Number>().DoubleValue();
-        _setvalue(offset, signal_type_bit_width(SIGNAL_TYPE::FLOAT64), endianess, data,
+        _setvalue(offset, effectiveBitLength, endianess, data,
                   std::bit_cast<uint64_t>(d));
     } else {
         uint64_t raw_value = static_cast<uint64_t>(info[5].As<Napi::Number>().Uint32Value());
         if (info.Length() > 6 && (info[6].IsNumber() || info[6].IsBoolean())) {
             raw_value += static_cast<uint64_t>(info[6].As<Napi::Number>().Uint32Value()) << 32;
         }
-        _setvalue(offset, bitLength, endianess, data, raw_value);
+        _setvalue(offset, effectiveBitLength, endianess, data, raw_value);
     }
 
     std::memcpy(jsData.Data(), data, maxBytes);

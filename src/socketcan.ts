@@ -32,7 +32,7 @@ import * as can from "../build/Release/can.node";
  * encoded in CAN messages.
  * @module Signals
  */
-// eslint-disable-next-line @typescript-eslint/triple-slash-reference
+
 /// <reference path="./can_signals.d.ts" />
 import * as _signals from "../build/Release/can_signals.node";
 
@@ -46,19 +46,23 @@ import * as kcd from "./parse_kcd";
  */
 export const SignalType = {
 	UNSIGNED: 0,
-	SIGNED:   1,
-	FLOAT32:  2,
-	FLOAT64:  3,
+	SIGNED: 1,
+	FLOAT32: 2,
+	FLOAT64: 3,
 } as const;
-type NativeSignalType = typeof SignalType[keyof typeof SignalType];
+type NativeSignalType = (typeof SignalType)[keyof typeof SignalType];
 
 /** Maps the KCD string type to the native numeric code. */
 function signalTypeCode(type: kcd.SignalType): NativeSignalType {
 	switch (type) {
-		case "unsigned": return SignalType.UNSIGNED;
-		case "signed":   return SignalType.SIGNED;
-		case "single":   return SignalType.FLOAT32;
-		case "double":   return SignalType.FLOAT64;
+		case "unsigned":
+			return SignalType.UNSIGNED;
+		case "signed":
+			return SignalType.SIGNED;
+		case "single":
+			return SignalType.FLOAT32;
+		case "double":
+			return SignalType.FLOAT64;
 	}
 }
 
@@ -68,7 +72,7 @@ function isFloatSignal(type: kcd.SignalType): boolean {
 }
 
 const UINT32_MAX = 0xffffffff;
-const TWO_TO_32  = 2 ** 32;
+const TWO_TO_32 = 2 ** 32;
 
 /**
  * @method createRawChannel
@@ -81,7 +85,7 @@ const TWO_TO_32  = 2 ** 32;
 export function createRawChannel(
 	channel: string,
 	timestamps?: boolean,
-	protocol?: number
+	protocol?: number,
 ): can.RawChannel {
 	return new can.RawChannel(channel, timestamps, protocol, false);
 }
@@ -101,7 +105,7 @@ interface ChannelOptions {
  */
 export function createRawChannelWithOptions(
 	channel: string,
-	options: ChannelOptions
+	options: ChannelOptions,
 ): can.RawChannel {
 	if (options === undefined) options = {};
 
@@ -113,7 +117,7 @@ export function createRawChannelWithOptions(
 		channel,
 		options.timestamps,
 		options.protocol,
-		options.non_block_send
+		options.non_block_send,
 	);
 }
 
@@ -144,7 +148,7 @@ export class Signal extends kcd.Signal {
 			desc.type,
 			desc.defaultValue,
 			desc.minValue,
-			desc.maxValue
+			desc.maxValue,
 		);
 
 		/**
@@ -198,15 +202,15 @@ export class Signal extends kcd.Signal {
 	 */
 	update(newValue: number) {
 		// TODO: Move this block to a `Value.isValid(v)` function?
-		if (this.maxValue && newValue > this.maxValue) {
+		if (this.maxValue != null && newValue > this.maxValue) {
 			console.error(
-				`ERROR : ${this.name} value = ${newValue} is out of bounds > ${this.maxValue}`
+				`ERROR : ${this.name} value = ${newValue} is out of bounds > ${this.maxValue}`,
 			);
 		}
 
-		if (this.minValue && newValue < this.minValue) {
+		if (this.minValue != null && newValue < this.minValue) {
 			console.error(
-				`ERROR : ${this.name} value = ${newValue} is out of bounds < ${this.minValue}`
+				`ERROR : ${this.name} value = ${newValue} is out of bounds < ${this.minValue}`,
 			);
 		}
 
@@ -333,7 +337,7 @@ export class Message {
 	 * @for Message
 	 */
 	removeListener(listener: CallableFunction) {
-		let idx = this.updateListeners.indexOf(listener);
+		const idx = this.updateListeners.indexOf(listener);
 		if (idx >= 0) this.updateListeners.splice(idx, 1);
 	}
 
@@ -362,7 +366,10 @@ export class Message {
  */
 export class DatabaseService {
 	readonly messages: Record<string, Message> = {};
-	constructor(private channel: can.RawChannel, busDef: kcd.Bus) {
+	constructor(
+		private channel: can.RawChannel,
+		busDef: kcd.Bus,
+	) {
 		busDef.messages.forEach((m) => {
 			const id = m.id | ((m.ext ? 1 : 0) << 31);
 
@@ -398,9 +405,9 @@ export class DatabaseService {
 				m.mux.offset,
 				m.mux.length,
 				true,
-				false
+				false,
 			);
-			mux_count = b_mux[0] + (b_mux[1] << 32);
+			mux_count = b_mux[0] + b_mux[1] * TWO_TO_32;
 		}
 
 		// Let the C-Portition extract and convert the signal
@@ -417,10 +424,10 @@ export class DatabaseService {
 				s.bitOffset,
 				s.bitLength,
 				s.endianess === "little",
-				signalTypeCode(s.type)
+				signalTypeCode(s.type),
 			);
 
-			let val = ret[0] + (ret[1] << 32);
+			let val = ret[0] + ret[1] * TWO_TO_32;
 
 			if (s.slope) val *= s.slope;
 
@@ -465,7 +472,7 @@ export class DatabaseService {
 				m.mux.length,
 				true,
 				false,
-				parseInt(mux, 16)
+				parseInt(mux, 16),
 			);
 
 		Object.values(m.signals).forEach((s) => {
@@ -500,7 +507,7 @@ export class DatabaseService {
 					s.bitLength,
 					s.endianess === "little",
 					typeCode,
-					val
+					val,
 				);
 			} else {
 				// Integer path: round and split into two 32-bit words.
@@ -514,7 +521,7 @@ export class DatabaseService {
 					s.endianess === "little",
 					typeCode,
 					word1,
-					word2
+					word2,
 				);
 			}
 		});
