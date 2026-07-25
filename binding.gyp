@@ -7,6 +7,7 @@
         "<!@(node -p \"require('node-addon-api').include_dir\")"
       ],
       "defines": [ "NAPI_DISABLE_CPP_EXCEPTIONS" ],
+      "libraries": [ "-lsocketcan" ],
       "cflags_cc": [ "-std=c++20" ]
     },
     {

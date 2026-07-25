@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- `setCanBitrate(interfaceName, bitrate)` changes a physical CAN interface's
+  arbitration bitrate while preserving whether the interface was active or
+  stopped.
+
+### Changed
+- Building the native addon now requires the `libsocketcan` development
+  package.
+
 ## [4.1.0] - 2026-05-17
 
 ### Fixed
