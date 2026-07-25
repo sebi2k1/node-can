@@ -16,7 +16,7 @@ declare module "*can_signals.node" {
 		bitOffset: number,
 		bitLength: number,
 		endianess: boolean,
-		signalType: SignalType
+		signalType: SignalType,
 	): number[];
 
 	// Encode signal according description
@@ -34,6 +34,6 @@ declare module "*can_signals.node" {
 		endianess: boolean,
 		signalType: SignalType,
 		word1: number | boolean,
-		word2?: number | boolean
+		word2?: number | boolean,
 	): void;
 }

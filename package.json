@@ -5,7 +5,7 @@
     "email": "sebastian@sebastianhaas.info"
   },
   "description": "A SocketCAN abstraction layer for NodeJS.",
-  "version": "4.2.3",
+  "version": "4.2.4",
   "license": "MIT",
   "keywords": [
     "can",
@@ -75,6 +75,7 @@
   "overrides": {
     "diff": "^9.0.0",
     "serialize-javascript": "^7.0.5",
-    "uuid": "^14.0.0"
+    "uuid": "^14.0.0",
+    "brace-expansion": "^5.0.8"
   }
 }

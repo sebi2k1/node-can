@@ -30,7 +30,7 @@ export class J1939 {
 		public Identity: number,
 		public Industry: number,
 		public System: number,
-		public Manufacture: number
+		public Manufacture: number,
 	) {}
 
 	getName() {
@@ -68,7 +68,7 @@ export class Node {
 		public id: number,
 		public name: string,
 		public device: object,
-		public j1939: J1939
+		public j1939: J1939,
 	) {}
 }
 
@@ -89,7 +89,7 @@ export class Signal {
 		public type: SignalType = "unsigned",
 		public defaultValue: number = 0.0,
 		public minValue?: number,
-		public maxValue?: number
+		public maxValue?: number,
 	) {}
 }
 
@@ -101,7 +101,7 @@ export class Mux {
 	constructor(
 		public name: string,
 		public offset: number,
-		public length: number
+		public length: number,
 	) {}
 }
 
@@ -117,7 +117,7 @@ export class Message {
 		public length: number,
 		public interval: number,
 		public muxed: boolean,
-		public mux?: Mux
+		public mux?: Mux,
 	) {}
 }
 
@@ -143,7 +143,7 @@ function makeSignalFromXml(
 	xmlSignal: XmlSignalDef,
 	xmlValue: Record<string, unknown>,
 	labelset: Record<string, unknown>,
-	muxCount: number
+	muxCount: number,
 ): Signal {
 	const bitOffset = parseInt(xmlSignal.offset);
 
@@ -176,7 +176,7 @@ function makeSignalFromXml(
 		rawValue?.type ?? "unsigned",
 		parseFloat(rawValue?.defaultValue ?? 0.0),
 		rawValue?.min ? parseFloat(rawValue.min) : undefined,
-		rawValue?.max ? parseFloat(rawValue.max) : undefined
+		rawValue?.max ? parseFloat(rawValue.max) : undefined,
 	);
 
 	return newSignal;
@@ -207,8 +207,8 @@ export function parseKcdFile(file: fs.PathOrFileDescriptor) {
 					rawNode["J1939IdentityNumber"],
 					rawNode["J1939IndustryGroup"],
 					rawNode["J1939System"],
-					rawNode["J1939ManufacturerCode"]
-				)
+					rawNode["J1939ManufacturerCode"],
+				),
 			);
 
 			network.nodes[rawNode["id"]] = newNode;
@@ -234,7 +234,7 @@ export function parseKcdFile(file: fs.PathOrFileDescriptor) {
 					message.triggered == "true",
 					message.length ? parseInt(message.length) : 0,
 					message.interval ? parseInt(message.interval) : 0,
-					multiplex != undefined
+					multiplex != undefined,
 				);
 
 				// Add messages going out and from whom.
@@ -286,7 +286,7 @@ export function parseKcdFile(file: fs.PathOrFileDescriptor) {
 								signal,
 								value,
 								labelset,
-								muxCount
+								muxCount,
 							);
 
 							newMessage.signals.push(newSignal);
