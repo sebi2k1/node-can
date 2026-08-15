@@ -29,32 +29,32 @@
     "configure": "node-gyp configure",
     "build": "node-gyp build",
     "build:ts": "tsc",
-    "build:all": "npm run build && npm run build:ts",
+    "build:all": "pnpm run build && pnpm run build:ts",
     "lint": "eslint --fix '*/**/*.{js,ts}'",
     "install": "node-gyp rebuild",
-    "prepare": "npm run build:ts",
+    "prepare": "pnpm run build:ts",
     "test": "mocha",
-    "coverage": "nyc npm test"
+    "coverage": "nyc pnpm test"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.0",
-    "@types/node": "^26.0.0",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.2.0",
     "@types/xml2js": "^0.4.14",
-    "@typescript-eslint/eslint-plugin": "^8.0.0",
-    "@typescript-eslint/parser": "^8.0.0",
-    "eslint": "^10.0.0",
-    "eslint-config-prettier": "^10.0.0",
-    "eslint-plugin-prettier": "^5.0.0",
-    "globals": "^17.0.0",
-    "mocha": "^11.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.67.0",
+    "@typescript-eslint/parser": "^8.67.0",
+    "eslint": "^10.8.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
+    "globals": "^17.11.0",
+    "mocha": "^11.8.0",
     "nyc": "^18.0.0",
-    "prettier": "^3.0.0",
-    "typescript": "^6.0.0"
+    "prettier": "^3.9.6",
+    "typescript": "^6.0.3"
   },
   "dependencies": {
-    "node-addon-api": "^8.8.0",
-    "node-gyp": ">=12.0.0",
-    "xml2js": ">=0.6.2"
+    "node-addon-api": "^8.9.2",
+    "node-gyp": "^13.0.1",
+    "xml2js": "^0.6.2"
   },
   "main": "dist/socketcan.js",
   "types": "dist/socketcan.d.ts",
@@ -67,15 +67,10 @@
     "docs"
   ],
   "engines": {
-    "node": ">=22.0.0"
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   },
+  "packageManager": "pnpm@11.21.0",
   "os": [
     "linux"
-  ],
-  "overrides": {
-    "diff": "^9.0.0",
-    "serialize-javascript": "^7.0.5",
-    "uuid": "^14.0.0",
-    "brace-expansion": "^5.0.8"
-  }
+  ]
 }

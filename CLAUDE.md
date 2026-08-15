@@ -11,12 +11,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build commands
 
 ```sh
-npm install          # builds native addon (node-gyp rebuild) + TypeScript (tsc via prepare)
-npm run build:all    # explicit: native + TypeScript
-npm run build:ts     # TypeScript only → dist/
-npm run configure    # node-gyp configure (rarely needed separately)
-npm run lint         # eslint --fix
-npm run test         # mocha (requires vcan0/vcan1 to exist)
+pnpm install          # builds native addon (node-gyp rebuild) + TypeScript (tsc via prepare)
+pnpm run build:all    # explicit: native + TypeScript
+pnpm run build:ts     # TypeScript only → dist/
+pnpm run configure    # node-gyp configure (rarely needed separately)
+pnpm run lint         # eslint --fix
+pnpm run test         # mocha (requires vcan0/vcan1 to exist)
 ```
 
 Before running tests, set up virtual CAN interfaces (requires Linux + kernel modules):
@@ -26,7 +26,7 @@ sh prepare_test_env.sh   # creates vcan0 and vcan1
 
 Run a single test file:
 ```sh
-npx mocha test/test-signal_conversion.js
+pnpm exec mocha test/test-signal_conversion.js
 ```
 
 ### Docker build validation (use this on macOS)
@@ -35,7 +35,7 @@ npx mocha test/test-signal_conversion.js
 docker build -f Dockerfile.build-test -t node-can-build-test .
 ```
 
-`Dockerfile.build-test` runs `npm install` inside a `node:22-bookworm-slim` image, which triggers the native build and TypeScript compilation. Use this to validate changes without a Linux machine.
+`Dockerfile.build-test` runs `pnpm install` inside a `node:22-bookworm-slim` image, which triggers the native build and TypeScript compilation. Use this to validate changes without a Linux machine.
 
 ## Architecture
 
@@ -75,6 +75,6 @@ can_signals.node
 
 ## Key constraints
 
-- Node.js ≥ 22 required (`engines` field enforced)
-- Tests import from `../dist/socketcan` — run `npm run build:ts` before running tests if you changed TypeScript source
-- The `prepare` script runs `tsc` automatically on `npm install`, so `dist/` is always populated after install
+- Node.js 22.22.2+, 24.15.0+, or 26+ required (`engines` field enforced)
+- Tests import from `../dist/socketcan` — run `pnpm run build:ts` before running tests if you changed TypeScript source
+- The `prepare` script runs `tsc` automatically on `pnpm install`, so `dist/` is always populated after install

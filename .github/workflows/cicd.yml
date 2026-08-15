@@ -13,19 +13,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [ 22.x, 24.x ]
+        node-version: [ 22.22.2, 24.15.0, 26.x ]
         os: [ ubuntu-latest, ubuntu-24.04-arm ]
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
+          cache: 'pnpm'
 
       - name: Prepare Ubuntu
         run: |
@@ -35,18 +37,18 @@ jobs:
 
       - name: Prepare deps
         run: |
-          npm ci
+          pnpm install --frozen-lockfile
 
       - name: Compile
         run: |
-          npm run configure
-          npm run build:all
+          pnpm run configure
+          pnpm run build:all
 
       - name: Lint
         run: |
-          npm run lint
+          pnpm run lint
 
       - name: Perform tests
         run: |
           sh prepare_test_env.sh
-          npm run test
+          pnpm run test
