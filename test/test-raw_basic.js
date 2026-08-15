@@ -1,7 +1,44 @@
 var assert = require('assert')
+var fs = require('fs');
 
 var can = require('../dist/socketcan');
 var buffer = require('buffer');
+
+function interfaceIsUp(name) {
+    var flags = fs.readFileSync('/sys/class/net/' + name + '/flags', 'utf8');
+    return (parseInt(flags, 16) & 1) !== 0;
+}
+
+describe('setCanBitrate', function() {
+    it('should validate its arguments', function() {
+        assert.throws(function() { can.setCanBitrate(); }, TypeError);
+        assert.throws(function() { can.setCanBitrate(123, 125000); }, TypeError);
+        assert.throws(function() { can.setCanBitrate('', 125000); }, TypeError);
+        assert.throws(function() { can.setCanBitrate('can0', '125000'); }, TypeError);
+        assert.throws(function() { can.setCanBitrate('can0', 125000.5); }, TypeError);
+        assert.throws(function() { can.setCanBitrate('can0', NaN); }, TypeError);
+        assert.throws(function() { can.setCanBitrate('can0', Infinity); }, TypeError);
+        assert.throws(function() { can.setCanBitrate('can0', 999); }, RangeError);
+        assert.throws(function() { can.setCanBitrate('can0', 1000001); }, RangeError);
+    });
+
+    it('should report an error for a nonexistent interface', function() {
+        assert.throws(function() {
+            can.setCanBitrate('non_existent_can_interface', 125000);
+        }, /setCanBitrate\(non_existent_can_interface\): failed to query interface state/);
+    });
+
+    it('should not leave interfaces in a different administrative state on failure', function() {
+        assert.equal(interfaceIsUp('vcan0'), true);
+        assert.equal(interfaceIsUp('vcan1'), false);
+
+        assert.throws(function() { can.setCanBitrate('vcan0', 125000); });
+        assert.throws(function() { can.setCanBitrate('vcan1', 125000); });
+
+        assert.equal(interfaceIsUp('vcan0'), true);
+        assert.equal(interfaceIsUp('vcan1'), false);
+    });
+});
 
 describe('RawChannel', function() {
     it('should throw exception', function(done) {

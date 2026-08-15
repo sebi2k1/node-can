@@ -8,6 +8,7 @@ Thanks for your interest in contributing to `socketcan`. This is a small Linux-o
 
 - Node.js ≥ 22
 - `node-gyp` build toolchain (`build-essential`, `python3`)
+- `libsocketcan` development headers and library (`libsocketcan-dev` on Debian/Ubuntu)
 - For tests: Linux kernel with SocketCAN modules (`vcan`)
 
 ## Getting started

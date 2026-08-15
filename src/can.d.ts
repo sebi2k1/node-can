@@ -1,4 +1,6 @@
 declare module "*can.node" {
+	export function setCanBitrate(interfaceName: string, bitrate: number): void;
+
 	export interface Message {
 		id: number;
 		ext: boolean;

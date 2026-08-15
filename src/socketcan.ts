@@ -41,6 +41,22 @@ import * as _signals from "../build/Release/can_signals.node";
 import * as kcd from "./parse_kcd";
 
 /**
+ * Change the arbitration bitrate of a CAN interface.
+ *
+ * If the interface is active, it is stopped while the bitrate is changed and
+ * then restored to the active state. An interface that is already stopped
+ * remains stopped.
+ *
+ * @method setCanBitrate
+ * @param interfaceName CAN interface name (e.g. can0)
+ * @param bitrate bitrate in bits per second (1 kbit/s to 1 Mbit/s)
+ * @for exports
+ */
+export function setCanBitrate(interfaceName: string, bitrate: number): void {
+	can.setCanBitrate(interfaceName, bitrate);
+}
+
+/**
  * Numeric signal-type codes understood by the can_signals native addon.
  * Mirrors the SIGNAL_TYPE enum in native/signals.cc.
  */
