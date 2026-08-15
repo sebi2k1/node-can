@@ -120,9 +120,9 @@ There are two options for installing node-can:
 1. Clone / download node-can from [GitHub](https://github.com/sebi2k1/node-can), then:
 
 ```shell
-    $ npm ci
-    $ npm run configure
-    $ npm run build:all
+    $ pnpm install --frozen-lockfile
+    $ pnpm run configure
+    $ pnpm run build:all
 ```
 
 2. Install via npm:
