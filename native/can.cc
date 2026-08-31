@@ -40,9 +40,14 @@
 #include <net/if.h>
 
 #include <linux/can.h>
+#include <linux/can/netlink.h>
 #include <linux/can/raw.h>
 #include <linux/sockios.h>
+#include <libsocketcan.h>
 
+#include <cmath>
+#include <cstdint>
+#include <cerrno>
 #include <vector>
 #include <string>
 
@@ -56,6 +61,9 @@
 
 #define likely(x)   __builtin_expect( x , 1)
 #define unlikely(x) __builtin_expect( x , 0)
+
+#define MIN_CAN_BITRATE 1000
+#define MAX_CAN_BITRATE 1000000
 
 /**
  * Basic CAN & CAN_FD access
@@ -706,9 +714,127 @@ private:
 
 //-----------------------------------------------------------------------------------------
 
+static std::string LibsocketcanError(const std::string& operation,
+                                     const std::string& interface_name,
+                                     int error_number)
+{
+  std::string message = "setCanBitrate(" + interface_name + "): failed to " + operation;
+  if (error_number != 0)
+    message += ": " + std::string(strerror(error_number));
+  return message;
+}
+
+/**
+ * Change the arbitration bitrate of a CAN interface, preserving whether the
+ * interface was active or stopped before the call.
+ *
+ * @method setCanBitrate
+ * @param interface {string} CAN interface name (e.g. can0)
+ * @param bitrate {integer} bitrate in bits per second (1 kbit/s to 1 Mbit/s)
+ */
+static Napi::Value SetCanBitrate(const Napi::CallbackInfo& info)
+{
+  Napi::Env env = info.Env();
+
+  if (info.Length() < 2) {
+    Napi::TypeError::New(env, "setCanBitrate requires an interface name and bitrate")
+        .ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+
+  if (!info[0].IsString()) {
+    Napi::TypeError::New(env, "Interface name must be a string").ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+
+  std::string interface_name = info[0].As<Napi::String>().Utf8Value();
+  if (interface_name.empty()) {
+    Napi::TypeError::New(env, "Interface name must not be empty").ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+
+  if (!info[1].IsNumber()) {
+    Napi::TypeError::New(env, "Bitrate must be an integer").ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+
+  double bitrate_value = info[1].As<Napi::Number>().DoubleValue();
+  if (!std::isfinite(bitrate_value) || std::floor(bitrate_value) != bitrate_value) {
+    Napi::TypeError::New(env, "Bitrate must be an integer").ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+
+  if (bitrate_value < MIN_CAN_BITRATE || bitrate_value > MAX_CAN_BITRATE) {
+    Napi::RangeError::New(env, "Bitrate must be between 1000 and 1000000 bits per second")
+        .ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+
+  const uint32_t bitrate = static_cast<uint32_t>(bitrate_value);
+  int initial_state;
+
+  errno = 0;
+  if (can_get_state(interface_name.c_str(), &initial_state) != 0) {
+    int error_number = errno;
+    Napi::Error::New(env, LibsocketcanError("query interface state", interface_name, error_number))
+        .ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+
+  const bool restore_active_state = initial_state != CAN_STATE_STOPPED;
+
+  if (restore_active_state) {
+    errno = 0;
+    if (can_do_stop(interface_name.c_str()) != 0) {
+      int error_number = errno;
+      Napi::Error::New(env, LibsocketcanError("stop interface", interface_name, error_number))
+          .ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+  }
+
+  errno = 0;
+  if (can_set_bitrate(interface_name.c_str(), bitrate) != 0) {
+    int bitrate_error = errno;
+    std::string message =
+        LibsocketcanError("set bitrate to " + std::to_string(bitrate), interface_name, bitrate_error);
+
+    if (restore_active_state) {
+      errno = 0;
+      if (can_do_start(interface_name.c_str()) != 0) {
+        int restore_error = errno;
+        message += "; also failed to restore the active interface state";
+        if (restore_error != 0)
+          message += ": " + std::string(strerror(restore_error));
+      }
+    }
+
+    Napi::Error::New(env, message).ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+
+  if (restore_active_state) {
+    errno = 0;
+    if (can_do_start(interface_name.c_str()) != 0) {
+      int error_number = errno;
+      std::string message = "setCanBitrate(" + interface_name + "): bitrate changed to " +
+                            std::to_string(bitrate) +
+                            " but failed to restore the active interface state";
+      if (error_number != 0)
+        message += ": " + std::string(strerror(error_number));
+      Napi::Error::New(env, message).ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+  }
+
+  return env.Undefined();
+}
+
 static Napi::Object ModuleInit(Napi::Env env, Napi::Object exports)
 {
-  return RawChannel::Init(env, exports);
+  RawChannel::Init(env, exports);
+  exports.Set("setCanBitrate", Napi::Function::New(env, SetCanBitrate));
+  return exports;
 }
 
 NODE_API_MODULE(can, ModuleInit)

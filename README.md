@@ -56,6 +56,20 @@ db_instr.send("TankController");
 channel.stop()
 ```
 
+Changing the bitrate of a physical CAN interface:
+
+```javascript
+var can = require("socketcan");
+
+can.setCanBitrate("can0", 500000);
+```
+
+`setCanBitrate` accepts integer arbitration bitrates from 1 kbit/s through
+1 Mbit/s. If the interface is active, it is stopped while the bitrate is
+changed and then restored to the active state; an already stopped interface
+remains stopped. The process needs permission to administer network
+interfaces (for example, `CAP_NET_ADMIN`).
+
 Usage (TypeScript)
 ------------------
 
@@ -114,6 +128,17 @@ Documentation
 
 Install
 -------
+
+The native addon links against
+[libsocketcan](https://git.pengutronix.de/cgit/tools/libsocketcan/). Install its
+development package before installing `socketcan`. On Debian and Ubuntu:
+
+```shell
+    $ sudo apt-get install libsocketcan-dev
+```
+
+Use the equivalent `libsocketcan` development package on other Linux
+distributions.
 
 There are two options for installing node-can:
 

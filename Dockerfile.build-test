@@ -5,6 +5,8 @@ RUN apt-get update && apt-get install -y \
     make \
     g++ \
     can-utils \
+    iproute2 \
+    libsocketcan-dev \
     --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build

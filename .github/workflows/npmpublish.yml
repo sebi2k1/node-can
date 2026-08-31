@@ -27,6 +27,7 @@ jobs:
       - name: Prepare Ubuntu
         run: |
           sudo apt-get install -y can-utils
+          sudo apt-get install -y libsocketcan-dev
           sudo apt-get install -y libnode-dev
           sudo apt-get install linux-modules-extra-$(uname -r)
 
