@@ -514,7 +514,7 @@ private:
 
   static void * c_thread_entry(void *_this) { assert(_this); reinterpret_cast<RawChannel *>(_this)->ThreadEntry(); return NULL; }
 
-  bool ClearRecoverableSocketError()
+  [[nodiscard]] bool ClearRecoverableSocketError()
   {
     int socketError = 0;
     socklen_t socketErrorLength = sizeof(socketError);
