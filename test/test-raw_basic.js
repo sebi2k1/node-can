@@ -26,14 +26,22 @@ describe('RawChannel', function() {
         done();
     });
 
-    it('should call onStopped if channel is destroyed', function(done) {
+    it('should stay active while the interface is down', function(done) {
         var channel = can.createRawChannel("vcan1");
+        var stopRequested = false;
+        var timeout;
 
         channel.addListener("onStopped", function() {
-            done();
+            clearTimeout(timeout);
+            done(stopRequested ? undefined : new Error('channel stopped while its interface was down'));
         });
 
         channel.start();
+
+        timeout = setTimeout(function() {
+            stopRequested = true;
+            channel.stop();
+        }, 100);
     });
 
     it('should call onStopped on stop()', function(done) {

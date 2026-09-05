@@ -43,6 +43,14 @@ sh prepare_test_env.sh   # creates vcan0 and vcan1 (requires root / modprobe)
 pnpm test
 ```
 
+The raw-channel interface lifecycle tests create and remove their own
+`vcan-pollerr` interface. They are skipped by default; enable them when running
+as root or with passwordless `sudo` available:
+
+```sh
+NODE_CAN_RUN_PRIVILEGED_TESTS=1 pnpm test
+```
+
 Run a single test file:
 
 ```sh

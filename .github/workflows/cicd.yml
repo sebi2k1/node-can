@@ -49,6 +49,8 @@ jobs:
           pnpm run lint
 
       - name: Perform tests
+        env:
+          NODE_CAN_RUN_PRIVILEGED_TESTS: '1'
         run: |
           sh prepare_test_env.sh
           pnpm run test
