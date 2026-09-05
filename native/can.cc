@@ -25,6 +25,7 @@
 #include <napi.h>
 #include <uv.h>
 
+#include <cerrno>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -513,6 +514,24 @@ private:
 
   static void * c_thread_entry(void *_this) { assert(_this); reinterpret_cast<RawChannel *>(_this)->ThreadEntry(); return NULL; }
 
+  bool ClearRecoverableSocketError()
+  {
+    int socketError = 0;
+    socklen_t socketErrorLength = sizeof(socketError);
+
+    // SO_ERROR returns and clears the pending socket error without consuming
+    // a queued CAN frame. A recv() here could silently discard valid data.
+    if (getsockopt(m_SocketFd, SOL_SOCKET, SO_ERROR, &socketError, &socketErrorLength) < 0)
+      return false;
+
+    // NETDEV_DOWN leaves a CAN_RAW socket bound, so it can receive again when
+    // the interface comes back up. ENOBUFS is also recoverable if a kernel or
+    // protocol implementation reports it asynchronously. NETDEV_UNREGISTER
+    // reports ENODEV and permanently unbinds the socket, so all other errors
+    // retain the existing fatal behaviour.
+    return socketError == ENETDOWN || socketError == ENOBUFS;
+  }
+
   void ThreadEntry()
   {
     struct pollfd pfd;
@@ -531,8 +550,22 @@ private:
 
       pthread_mutex_unlock(&m_ReadPendingMtx);
 
-      if (likely(poll(&pfd, 1, 100) >= 0))
+      int pollResult = poll(&pfd, 1, 100);
+
+      if (pollResult > 0)
       {
+        if (pfd.revents & (POLLHUP|POLLNVAL))
+        {
+          uv_async_send(&m_AsyncChannelStopped);
+          break;
+        }
+
+        if ((pfd.revents & POLLERR) && !ClearRecoverableSocketError())
+        {
+          uv_async_send(&m_AsyncChannelStopped);
+          break;
+        }
+
         if (likely(pfd.revents & POLLIN))
         {
           pthread_mutex_lock(&m_ReadPendingMtx);
@@ -540,15 +573,13 @@ private:
           m_ReadPending = true;
           pthread_mutex_unlock(&m_ReadPendingMtx);
         }
-
-        if (pfd.revents & (POLLHUP|POLLERR))
-        {
-          uv_async_send(&m_AsyncChannelStopped);
-          break;
-        }
       }
-      else
+      else if (pollResult < 0)
       {
+        if (errno == EINTR)
+          continue;
+
+        uv_async_send(&m_AsyncChannelStopped);
         break;
       }
     }

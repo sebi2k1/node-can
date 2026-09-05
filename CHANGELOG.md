@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- `RawChannel` no longer stops permanently when a raw CAN socket reports the
+  recoverable `ENETDOWN` or `ENOBUFS` conditions through `POLLERR`. Pending
+  socket errors are inspected and cleared with `SO_ERROR`, allowing reception
+  to resume without consuming a queued CAN frame. Permanent interface removal
+  (`ENODEV`), hangups, invalid descriptors, and other polling failures still
+  stop the channel.
+
 ## [4.1.0] - 2026-05-17
 
 ### Fixed
