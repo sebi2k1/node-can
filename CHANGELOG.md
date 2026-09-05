@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [4.3.1] - 2026-09-05
+
 ### Fixed
 - `RawChannel` no longer stops permanently when a raw CAN socket reports the
   recoverable `ENETDOWN` or `ENOBUFS` conditions through `POLLERR`. Pending
