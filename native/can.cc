@@ -267,6 +267,7 @@ private:
     napi_create_string_utf8(env, "socketcan:RawChannel:onMessage", NAPI_AUTO_LENGTH, &resource_name);
     napi_async_init(env, (napi_value)info.This(), resource_name, &m_async_ctx);
 
+    m_StoppedAlready = false;
     m_ThreadStopRequested = false;
     int rc = pthread_create(&m_Thread, NULL, c_thread_entry, this);
 
