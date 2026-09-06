@@ -398,8 +398,11 @@ export class DatabaseService {
 		}
 
 		let mux_count = -1;
+		const payloadBits = Math.min(msg.data.length, 64) * 8;
 
 		if (m.muxed && m.mux) {
+			if (m.mux.offset + m.mux.length > payloadBits) return;
+
 			const b_mux = _signals.decodeSignal(
 				msg.data,
 				m.mux.offset,
@@ -410,15 +413,20 @@ export class DatabaseService {
 			mux_count = b_mux[0] + b_mux[1] * TWO_TO_32;
 		}
 
+		const signals = Object.values(m.signals).filter(
+			(s) => !m.muxed || s.muxGroup.includes(mux_count),
+		);
+
+		// Reject truncated frames before updating any signals or notifying listeners.
+		for (const s of signals) {
+			// The native decoder uses fixed widths for floating-point signals.
+			const width =
+				s.type === "single" ? 32 : s.type === "double" ? 64 : s.bitLength;
+			if (s.bitOffset + width > payloadBits) return;
+		}
+
 		// Let the C-Portition extract and convert the signal
-		for (const i in m.signals) {
-			const s = m.signals[i];
-
-			// if this is a mux signal and the muxor isnt in my list...
-			if (m.muxed && s.muxGroup.indexOf(mux_count) == -1) {
-				continue;
-			}
-
+		for (const s of signals) {
 			const ret = _signals.decodeSignal(
 				msg.data,
 				s.bitOffset,
