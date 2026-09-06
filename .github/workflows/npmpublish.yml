@@ -6,18 +6,23 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24.15.0
           registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
 
       - name: Prepare Ubuntu
         run: |
@@ -26,22 +31,20 @@ jobs:
           sudo apt-get install linux-modules-extra-$(uname -r)
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build
         run: |
-          npm run configure
-          npm run build:all
+          pnpm run configure
+          pnpm run build:all
 
       - name: Lint
-        run: npm run lint
+        run: pnpm run lint
 
       - name: Test
         run: |
           sh prepare_test_env.sh
-          npm test
+          pnpm test
 
       - name: Publish
         run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

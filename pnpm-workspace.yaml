@@ -1,0 +1,5 @@
+overrides:
+  brace-expansion: ^5.0.9
+  diff: ^9.0.0
+  serialize-javascript: ^7.1.0
+  uuid: ^14.0.1

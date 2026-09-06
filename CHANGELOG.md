@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased
+
+## [4.3.2] - 2026-09-06
+
+### Fixed
+- Reject invalid signal offsets before integer conversion and use overflow-safe
+  bounds checks when encoding and decoding CAN/CAN-FD signals.
+- Correct signal extraction and encoding beyond byte 7 of CAN-FD frames,
+  preserve the high word when reconstructing decoded values, and honor signal
+  minimum and maximum bounds of zero.
+- Stop the channel reader thread before closing its socket, release initialized
+  synchronization resources, and prevent duplicate stop cleanup. Reset the stop
+  guard on each start so restarted channels can stop and release their handles.
+
+## [4.3.1] - 2026-09-05
+
+### Fixed
+- `RawChannel` no longer stops permanently when a raw CAN socket reports the
+  recoverable `ENETDOWN` or `ENOBUFS` conditions through `POLLERR`. Pending
+  socket errors are inspected and cleared with `SO_ERROR`, allowing reception
+  to resume without consuming a queued CAN frame. Permanent interface removal
+  (`ENODEV`), hangups, invalid descriptors, and other polling failures still
+  stop the channel.
+
 ## [4.1.0] - 2026-05-17
 
 ### Fixed

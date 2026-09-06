@@ -21,7 +21,7 @@ describe('RawChannel send overflow protection', function() {
 
         assert.throws(function() {
             channel.send(msg);
-        }, /Data buffer exceeds CAN frame size/);
+        }, /Data field too long for a CAN frame/);
 
         channel.stop();
         done();

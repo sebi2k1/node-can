@@ -9,9 +9,9 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /build
 
-COPY package.json package-lock.json binding.gyp ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml binding.gyp ./
 COPY native/ ./native/
 COPY src/ ./src/
 COPY tsconfig.json ./
 
-RUN npm install
+RUN corepack enable && pnpm install --frozen-lockfile

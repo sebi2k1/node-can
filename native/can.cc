@@ -25,6 +25,7 @@
 #include <napi.h>
 #include <uv.h>
 
+#include <cerrno>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -97,7 +98,8 @@ public:
     : Napi::ObjectWrap<RawChannel>(info),
       m_Thread(0), m_Name(""), m_ReadPending(false), m_SocketFd(-1),
       m_ThreadStopRequested(false), m_TimestampsSupported(false),
-      m_NonBlockingSend(false), m_napi_env(nullptr), m_async_ctx(nullptr)
+      m_NonBlockingSend(false), m_napi_env(nullptr), m_async_ctx(nullptr),
+      m_StoppedAlready(false), m_SyncInitialized(false)
   {
     Napi::Env env = info.Env();
 
@@ -164,6 +166,7 @@ public:
 
       pthread_mutex_init(&m_ReadPendingMtx, NULL);
       pthread_cond_init(&m_ReadPendingCond, NULL);
+      m_SyncInitialized = true;
 
       return;
 
@@ -179,6 +182,21 @@ public:
 
   ~RawChannel()
   {
+    // Stop the reader thread before closing the socket: the thread may be
+    // mid-poll() on m_SocketFd, and closing a fd while another thread is
+    // polling it is undefined under POSIX (the fd can be reused by an
+    // unrelated open() before poll() returns).
+    if (m_Thread)
+      stopThread();
+
+    if (m_SocketFd >= 0)
+      close(m_SocketFd);
+
+    if (m_SyncInitialized) {
+      pthread_cond_destroy(&m_ReadPendingCond);
+      pthread_mutex_destroy(&m_ReadPendingMtx);
+    }
+
     for (size_t i = 0; i < m_OnMessageListeners.size(); i++)
       delete m_OnMessageListeners.at(i);
     m_OnMessageListeners.clear();
@@ -186,12 +204,6 @@ public:
     for (size_t i = 0; i < m_OnChannelStoppedListeners.size(); i++)
       delete m_OnChannelStoppedListeners.at(i);
     m_OnChannelStoppedListeners.clear();
-
-    if (m_SocketFd >= 0)
-      close(m_SocketFd);
-
-    if (m_Thread)
-      stopThread();
   }
 
 private:
@@ -255,10 +267,11 @@ private:
     napi_create_string_utf8(env, "socketcan:RawChannel:onMessage", NAPI_AUTO_LENGTH, &resource_name);
     napi_async_init(env, (napi_value)info.This(), resource_name, &m_async_ctx);
 
+    m_StoppedAlready = false;
     m_ThreadStopRequested = false;
-    pthread_create(&m_Thread, NULL, c_thread_entry, this);
+    int rc = pthread_create(&m_Thread, NULL, c_thread_entry, this);
 
-    CHECK_CONDITION(m_Thread, "Error starting dispatch thread");
+    CHECK_CONDITION(rc == 0, "Error starting dispatch thread");
 
     Ref();
 
@@ -307,7 +320,7 @@ private:
     CHECK_CONDITION(dataArg.IsBuffer(), "Data field must be a Buffer");
 
     Napi::Buffer<uint8_t> dataBuf = dataArg.As<Napi::Buffer<uint8_t>>();
-    CHECK_CONDITION(dataBuf.ByteLength() <= CAN_MAX_DLEN, "Data buffer exceeds CAN frame size");
+    CHECK_CONDITION(dataBuf.ByteLength() <= sizeof(frame.data), "Data field too long for a CAN frame (max 8 bytes)");
     frame.can_dlc = dataBuf.ByteLength();
     memcpy(frame.data, dataBuf.Data(), frame.can_dlc);
 
@@ -360,6 +373,7 @@ private:
     CHECK_CONDITION(dataArg.IsBuffer(), "Data field must be a Buffer");
 
     Napi::Buffer<uint8_t> dataBuf = dataArg.As<Napi::Buffer<uint8_t>>();
+    CHECK_CONDITION(dataBuf.ByteLength() <= sizeof(frameFD.data), "Data field too long for a CAN FD frame (max 64 bytes)");
     frameFD.len = dataBuf.ByteLength();
     memset(frameFD.data, 0, sizeof(frameFD.data));
     memcpy(frameFD.data, dataBuf.Data(), frameFD.len);
@@ -510,7 +524,34 @@ private:
   napi_env m_napi_env;
   napi_async_context m_async_ctx;
 
+  // Single-shot guard so that JS Stop() and a reader-thread POLLHUP-driven
+  // uv_async_send can both call async_channel_stopped() without us running
+  // the listener loop or Unref() twice.
+  bool m_StoppedAlready;
+
+  // Whether m_ReadPendingMtx / m_ReadPendingCond were successfully
+  // initialized. Controls whether the destructor pairs them with *_destroy.
+  bool m_SyncInitialized;
+
   static void * c_thread_entry(void *_this) { assert(_this); reinterpret_cast<RawChannel *>(_this)->ThreadEntry(); return NULL; }
+
+  [[nodiscard]] bool ClearRecoverableSocketError()
+  {
+    int socketError = 0;
+    socklen_t socketErrorLength = sizeof(socketError);
+
+    // SO_ERROR returns and clears the pending socket error without consuming
+    // a queued CAN frame. A recv() here could silently discard valid data.
+    if (getsockopt(m_SocketFd, SOL_SOCKET, SO_ERROR, &socketError, &socketErrorLength) < 0)
+      return false;
+
+    // NETDEV_DOWN leaves a CAN_RAW socket bound, so it can receive again when
+    // the interface comes back up. ENOBUFS is also recoverable if a kernel or
+    // protocol implementation reports it asynchronously. NETDEV_UNREGISTER
+    // reports ENODEV and permanently unbinds the socket, so all other errors
+    // retain the existing fatal behaviour.
+    return socketError == ENETDOWN || socketError == ENOBUFS;
+  }
 
   void ThreadEntry()
   {
@@ -530,8 +571,22 @@ private:
 
       pthread_mutex_unlock(&m_ReadPendingMtx);
 
-      if (likely(poll(&pfd, 1, 100) >= 0))
+      int pollResult = poll(&pfd, 1, 100);
+
+      if (pollResult > 0)
       {
+        if (pfd.revents & (POLLHUP|POLLNVAL))
+        {
+          uv_async_send(&m_AsyncChannelStopped);
+          break;
+        }
+
+        if ((pfd.revents & POLLERR) && !ClearRecoverableSocketError())
+        {
+          uv_async_send(&m_AsyncChannelStopped);
+          break;
+        }
+
         if (likely(pfd.revents & POLLIN))
         {
           pthread_mutex_lock(&m_ReadPendingMtx);
@@ -539,15 +594,13 @@ private:
           m_ReadPending = true;
           pthread_mutex_unlock(&m_ReadPendingMtx);
         }
-
-        if (pfd.revents & (POLLHUP|POLLERR))
-        {
-          uv_async_send(&m_AsyncChannelStopped);
-          break;
-        }
       }
-      else
+      else if (pollResult < 0)
       {
+        if (errno == EINTR)
+          continue;
+
+        uv_async_send(&m_AsyncChannelStopped);
         break;
       }
     }
@@ -588,6 +641,13 @@ private:
 
   void async_channel_stopped()
   {
+    // Single-shot: JS Stop() and the reader-thread POLLHUP/POLLERR path can
+    // both end up calling this. Without the guard the second invocation
+    // would re-run the listener loop, double-close the uv handles, and
+    // Unref() the strong reference one too many times.
+    if (m_StoppedAlready) return;
+    m_StoppedAlready = true;
+
     Napi::Env env(m_napi_env);
     Napi::HandleScope scope(env);
 

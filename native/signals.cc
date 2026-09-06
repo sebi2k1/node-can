@@ -15,8 +15,11 @@
  */
 #include <napi.h>
 
+#include <endian.h>   // le64toh/be64toh/htole64/htobe64 (not pulled in transitively on all arches)
+
 #include <algorithm>
 #include <bit>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 
@@ -141,7 +144,10 @@ Napi::Value DecodeSignal(const Napi::CallbackInfo& info)
 
     Napi::Buffer<uint8_t> jsData = info[0].As<Napi::Buffer<uint8_t>>();
 
-    offset     = info[1].As<Napi::Number>().Uint32Value();
+    double rawOffset = info[1].As<Napi::Number>().DoubleValue();
+    CHECK_CONDITION(rawOffset >= 0 && rawOffset <= MAX_TOTAL_BITS &&
+                    std::floor(rawOffset) == rawOffset, "Invalid offset");
+    offset     = static_cast<uint32_t>(rawOffset);
     bitLength  = info[2].As<Napi::Number>().Uint32Value();
     endianess  = info[3].As<Napi::Boolean>().Value() ? ENDIANESS::INTEL : ENDIANESS::MOTOROLA;
     SIGNAL_TYPE signalType = _parse_signal_type(env, info[4]);
@@ -154,7 +160,7 @@ Napi::Value DecodeSignal(const Napi::CallbackInfo& info)
 
     CHECK_CONDITION(effectiveBitLength > 0 && effectiveBitLength <= 64,
                     "bitLength must be in range 1..64");
-    CHECK_CONDITION(offset + effectiveBitLength <= MAX_TOTAL_BITS,
+    CHECK_CONDITION(offset <= MAX_TOTAL_BITS - effectiveBitLength,
                     "signal extends past 64-byte frame");
 
     size_t maxBytes = std::min<size_t>(jsData.ByteLength(), MAX_PAYLOAD_BYTES);
@@ -270,7 +276,10 @@ Napi::Value EncodeSignal(const Napi::CallbackInfo& info)
 
     Napi::Buffer<uint8_t> jsData = info[0].As<Napi::Buffer<uint8_t>>();
 
-    offset     = info[1].As<Napi::Number>().Uint32Value();
+    double rawOffset = info[1].As<Napi::Number>().DoubleValue();
+    CHECK_CONDITION(rawOffset >= 0 && rawOffset <= MAX_TOTAL_BITS &&
+                    std::floor(rawOffset) == rawOffset, "Invalid offset");
+    offset     = static_cast<uint32_t>(rawOffset);
     bitLength  = info[2].As<Napi::Number>().Uint32Value();
     endianess  = info[3].As<Napi::Boolean>().Value() ? ENDIANESS::INTEL : ENDIANESS::MOTOROLA;
     SIGNAL_TYPE signalType = _parse_signal_type(env, info[4]);
@@ -281,7 +290,7 @@ Napi::Value EncodeSignal(const Napi::CallbackInfo& info)
 
     CHECK_CONDITION(effectiveBitLength > 0 && effectiveBitLength <= 64,
                     "bitLength must be in range 1..64");
-    CHECK_CONDITION(offset + effectiveBitLength <= MAX_TOTAL_BITS,
+    CHECK_CONDITION(offset <= MAX_TOTAL_BITS - effectiveBitLength,
                     "signal extends past 64-byte frame");
 
     size_t maxBytes = std::min<size_t>(jsData.ByteLength(), MAX_PAYLOAD_BYTES);

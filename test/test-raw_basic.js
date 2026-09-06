@@ -26,14 +26,22 @@ describe('RawChannel', function() {
         done();
     });
 
-    it('should call onStopped if channel is destroyed', function(done) {
+    it('should stay active while the interface is down', function(done) {
         var channel = can.createRawChannel("vcan1");
+        var stopRequested = false;
+        var timeout;
 
         channel.addListener("onStopped", function() {
-            done();
+            clearTimeout(timeout);
+            done(stopRequested ? undefined : new Error('channel stopped while its interface was down'));
         });
 
         channel.start();
+
+        timeout = setTimeout(function() {
+            stopRequested = true;
+            channel.stop();
+        }, 100);
     });
 
     it('should call onStopped on stop()', function(done) {
@@ -47,6 +55,40 @@ describe('RawChannel', function() {
         channel.start();
 
         setTimeout(function() { channel.stop(); }, 100);
+    });
+
+    it('should reject over-length data buffer in send()', function(done) {
+        var channel = can.createRawChannel("vcan0");
+
+        // A classic CAN frame carries at most 8 data bytes. A longer buffer must be
+        // rejected before the native memcpy to avoid a stack out-of-bounds write.
+        assert.throws(function() {
+            channel.send({ id: 0x123, data: Buffer.alloc(64, 0x41) });
+        });
+
+        // Exactly 8 bytes is still allowed.
+        assert.doesNotThrow(function() {
+            channel.send({ id: 0x123, data: Buffer.alloc(8, 0x41) });
+        });
+
+        done();
+    });
+
+    it('should reject over-length data buffer in sendFD()', function(done) {
+        var channel = can.createRawChannel("vcan0");
+
+        // A CAN FD frame carries at most 64 data bytes. A longer buffer must be
+        // rejected before the native memcpy to avoid a stack out-of-bounds write.
+        assert.throws(function() {
+            channel.sendFD({ id: 0x123, data: Buffer.alloc(128, 0x41) });
+        });
+
+        // Exactly 64 bytes is still allowed.
+        assert.doesNotThrow(function() {
+            channel.sendFD({ id: 0x123, data: Buffer.alloc(64, 0x41) });
+        });
+
+        done();
     });
 
     it('should receive 100 messages', function(done) {
