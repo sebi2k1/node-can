@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## [4.3.2] - 2026-09-06
+
+### Fixed
+- Reject invalid signal offsets before integer conversion and use overflow-safe
+  bounds checks when encoding and decoding CAN/CAN-FD signals.
+- Correct signal extraction and encoding beyond byte 7 of CAN-FD frames,
+  preserve the high word when reconstructing decoded values, and honor signal
+  minimum and maximum bounds of zero.
+- Stop the channel reader thread before closing its socket, release initialized
+  synchronization resources, and prevent duplicate stop cleanup. Reset the stop
+  guard on each start so restarted channels can stop and release their handles.
+
 ## [4.3.1] - 2026-09-05
 
 ### Fixed

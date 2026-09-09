@@ -326,4 +326,177 @@ describe('signals', function() {
         assert.strictEqual(result[0], 1.0);
         done();
     });
+
+    it('should throw on bitLength 0 in decodeSignal', function(done) {
+        data = Buffer.from([0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE]);
+        assert.throws(function() {
+            signals.decodeSignal(data, 0, 0, true, SIGNAL_UNSIGNED);
+        }, /bitLength must be in range 1\.\.64/);
+        done();
+    });
+
+    it('should throw on bitLength 65 in decodeSignal', function(done) {
+        data = Buffer.from([0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE]);
+        assert.throws(function() {
+            signals.decodeSignal(data, 0, 65, true, SIGNAL_UNSIGNED);
+        }, /bitLength must be in range 1\.\.64/);
+        done();
+    });
+
+    it('should throw on bitLength 0 in encodeSignal', function(done) {
+        data = Buffer.alloc(8);
+        assert.throws(function() {
+            signals.encodeSignal(data, 0, 0, true, SIGNAL_UNSIGNED, 1);
+        }, /bitLength must be in range 1\.\.64/);
+        done();
+    });
+
+    it('should throw on bitLength 65 in encodeSignal', function(done) {
+        data = Buffer.alloc(8);
+        assert.throws(function() {
+            signals.encodeSignal(data, 0, 65, true, SIGNAL_UNSIGNED, 1);
+        }, /bitLength must be in range 1\.\.64/);
+        done();
+    });
+
+    it('should return correct high word for 64-bit unsigned decode (fix << 32 bug)', function(done) {
+        // Value: 0xCAFEBABE_EFBEADDE — high word 0xCAFEBABE, low word 0xEFBEADDE
+        data = Buffer.from([0xDE, 0xAD, 0xBE, 0xEF, 0xBE, 0xBA, 0xFE, 0xCA]);
+        var result = signals.decodeSignal(data, 0, 64, true, SIGNAL_UNSIGNED);
+        // result[1] is the high 32 bits; must not be zero
+        assert.strictEqual(result[1], 0xCAFEBABE);
+        assert.strictEqual(result[0], 0xEFBEADDE);
+        done();
+    });
+
+    // ---------------------------------------------------------------------
+    // CAN-FD mid/late buffer cases — exercise signals past byte 7, which the
+    // old fixed-window extractor handled incorrectly.
+    // ---------------------------------------------------------------------
+
+    it('should decode Intel 16-bit signal at mid-buffer offset 200', function(done) {
+        data = Buffer.alloc(64);
+        data[25] = 0xEF;
+        data[26] = 0xBE;
+        var result = signals.decodeSignal(data, 200, 16, true, SIGNAL_UNSIGNED);
+        assert.strictEqual(result[0], 0xBEEF);
+        done();
+    });
+
+    it('should encode Intel 16-bit signal at mid-buffer offset 200', function(done) {
+        data = Buffer.alloc(64);
+        signals.encodeSignal(data, 200, 16, true, SIGNAL_UNSIGNED, 0xBEEF);
+        assert.strictEqual(data[25], 0xEF);
+        assert.strictEqual(data[26], 0xBE);
+        // Bytes outside the signal are untouched.
+        assert.strictEqual(data[24], 0x00);
+        assert.strictEqual(data[27], 0x00);
+        done();
+    });
+
+    it('should decode Motorola 12-bit signal at byte-aligned offset 144', function(done) {
+        data = Buffer.alloc(64);
+        data[18] = 0xAB;
+        data[19] = 0xC0;
+        var result = signals.decodeSignal(data, 144, 12, false, SIGNAL_UNSIGNED);
+        assert.strictEqual(result[0], 0xABC);
+        done();
+    });
+
+    it('should encode Motorola 12-bit signal at byte-aligned offset 144', function(done) {
+        // Pre-set byte 19's low nibble so we can verify RMW preserves it.
+        data = Buffer.alloc(64);
+        data[19] = 0x05;
+        signals.encodeSignal(data, 144, 12, false, SIGNAL_UNSIGNED, 0xABC);
+        assert.strictEqual(data[18], 0xAB);
+        assert.strictEqual(data[19], 0xC5);
+        done();
+    });
+
+    it('should round-trip Motorola 10-bit signal at non-byte-aligned offset 147', function(done) {
+        data = Buffer.alloc(64);
+        signals.encodeSignal(data, 147, 10, false, SIGNAL_UNSIGNED, 0x2D4);
+        var result = signals.decodeSignal(data, 147, 10, false, SIGNAL_UNSIGNED);
+        assert.strictEqual(result[0], 0x2D4);
+        // The signal lives in bytes 18 (low 5 bits) and 19 (high 5 bits).
+        assert.strictEqual(data[18] & 0x1F, 0x16);
+        assert.strictEqual((data[19] >> 3) & 0x1F, 0x14);
+        done();
+    });
+
+    it('should round-trip 8-bit signal at byte 63 (last byte of CAN-FD)', function(done) {
+        data = Buffer.alloc(64);
+        signals.encodeSignal(data, 504, 8, true, SIGNAL_UNSIGNED, 0xA5);
+        assert.strictEqual(data[63], 0xA5);
+        var result = signals.decodeSignal(data, 504, 8, true, SIGNAL_UNSIGNED);
+        assert.strictEqual(result[0], 0xA5);
+        done();
+    });
+
+    it('should round-trip 64-bit Intel signal at offset 0', function(done) {
+        data = Buffer.alloc(64);
+        signals.encodeSignal(data, 0, 64, true, SIGNAL_UNSIGNED, 0xEFBEADDE, 0xCAFEBABE);
+        var result = signals.decodeSignal(data, 0, 64, true, SIGNAL_UNSIGNED);
+        assert.strictEqual(result[0], 0xEFBEADDE);
+        assert.strictEqual(result[1], 0xCAFEBABE);
+        done();
+    });
+
+    it('should round-trip 64-bit Intel signal at offset 64 (mid-buffer)', function(done) {
+        data = Buffer.alloc(64);
+        signals.encodeSignal(data, 64, 64, true, SIGNAL_UNSIGNED, 0x12345678, 0x9ABCDEF0);
+        var result = signals.decodeSignal(data, 64, 64, true, SIGNAL_UNSIGNED);
+        assert.strictEqual(result[0], 0x12345678);
+        assert.strictEqual(result[1], 0x9ABCDEF0);
+        // Bytes outside the signal are untouched.
+        for (var i = 0; i < 8; i++) assert.strictEqual(data[i], 0x00);
+        done();
+    });
+
+    it('should round-trip 58-bit Intel signal at non-byte-aligned offset 7 (fallback path)', function(done) {
+        // bit_in_byte (7) + length (58) = 65 > 64  ⇒  exercises the per-bit fallback.
+        data = Buffer.alloc(64);
+        signals.encodeSignal(data, 7, 58, true, SIGNAL_UNSIGNED, 0xFFFFFFFF, 0x03FFFFFF);
+        var result = signals.decodeSignal(data, 7, 58, true, SIGNAL_UNSIGNED);
+        assert.strictEqual(result[0], 0xFFFFFFFF);
+        assert.strictEqual(result[1], 0x03FFFFFF);
+        done();
+    });
+
+    // ---------------------------------------------------------------------
+    // Out-of-bounds: signal beyond the 64-byte CAN-FD frame, or beyond the
+    // caller's buffer, should throw rather than silently corrupt data.
+    // ---------------------------------------------------------------------
+
+    it('should throw on decode when signal extends past 64-byte frame', function(done) {
+        data = Buffer.alloc(64);
+        assert.throws(function() {
+            signals.decodeSignal(data, 505, 8, true, SIGNAL_UNSIGNED);
+        }, /signal extends past 64-byte frame/);
+        done();
+    });
+
+    it('should throw on encode when signal extends past 64-byte frame', function(done) {
+        data = Buffer.alloc(64);
+        assert.throws(function() {
+            signals.encodeSignal(data, 505, 8, true, SIGNAL_UNSIGNED, 0);
+        }, /signal extends past 64-byte frame/);
+        done();
+    });
+
+    it('should throw on decode when signal extends past caller buffer', function(done) {
+        data = Buffer.alloc(8);
+        assert.throws(function() {
+            signals.decodeSignal(data, 64, 8, true, SIGNAL_UNSIGNED);
+        }, /signal extends past buffer/);
+        done();
+    });
+
+    it('should throw on encode when signal extends past caller buffer', function(done) {
+        data = Buffer.alloc(8);
+        assert.throws(function() {
+            signals.encodeSignal(data, 64, 8, true, SIGNAL_UNSIGNED, 0xFF);
+        }, /signal extends past buffer/);
+        done();
+    });
 });
