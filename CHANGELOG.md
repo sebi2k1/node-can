@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## [4.3.2] - 2026-10-03
+
+### Security
+- Update locked transitive dependencies to patched versions: `undici` 8.11.2,
+  `js-yaml` 3.15.2 / 5.4.2, and `brace-expansion` 5.0.12.
+
+### Fixed
+- Refresh Ubuntu package indexes before installing CI prerequisites to avoid
+  stale package URLs, and install kernel modules noninteractively.
+
 ## [4.3.1] - 2026-09-05
 
 ### Fixed
