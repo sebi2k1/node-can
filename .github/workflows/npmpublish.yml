@@ -29,7 +29,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y can-utils
           sudo apt-get install -y libnode-dev
-          sudo apt-get install -y linux-modules-extra-$(uname -r)
+          # Newer kernels ship vcan in the base linux-modules package and have no
+          # linux-modules-extra package, so only install it when vcan is missing.
+          if ! modinfo vcan > /dev/null 2>&1; then
+            sudo apt-get install -y linux-modules-extra-$(uname -r)
+          fi
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
