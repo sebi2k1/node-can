@@ -31,9 +31,10 @@ jobs:
 
       - name: Prepare Ubuntu
         run: |
+          sudo apt-get update
           sudo apt-get install -y can-utils
           sudo apt-get install -y libnode-dev
-          sudo apt-get install linux-modules-extra-$(uname -r)
+          sudo apt-get install -y linux-modules-extra-$(uname -r)
 
       - name: Prepare deps
         run: |
