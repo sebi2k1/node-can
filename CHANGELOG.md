@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+- Install `linux-modules-extra` in CI only when the `vcan` module is not
+  already available, since newer runner kernels ship it in `linux-modules`.
+
 ## [4.3.2] - 2026-10-03
 
 ### Security
