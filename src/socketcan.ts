@@ -22,6 +22,7 @@
 // -----------------------------------------------------------------------------
 // CAN-Object
 
+// eslint-disable-next-line @typescript-eslint/triple-slash-reference
 /// <reference path="./can.d.ts" />
 import * as can from "../build/Release/can.node";
 
